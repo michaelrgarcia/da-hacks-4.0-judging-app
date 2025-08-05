@@ -15,9 +15,12 @@ function Nav() {
   return (
     <header className="bg-background/80 sticky top-0 z-50 w-full border-b backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto max-w-[1400px] flex h-16 items-center gap-2 px-6">
-        <span className="font-bold text-xl tracking-tight mr-6 select-none">
+        <Link
+          href="/"
+          className="font-bold text-xl tracking-tight mr-6 select-none"
+        >
           DA Hacks 4.0
-        </span>
+        </Link>
 
         <nav className="items-center gap-2 hidden lg:flex lg:justify-center lg:flex-1 select-none">
           <Link
