@@ -47,7 +47,12 @@ function Nav() {
 
         <div className=" gap-3 items-center lg:flex hidden">
           <ThemeToggle />
-          <Button onClick={() => void signIn("google")}>Log In</Button>
+          <Button
+            onClick={() => void signIn("google")}
+            className="cursor-pointer"
+          >
+            Log In
+          </Button>
         </div>
 
         <button
