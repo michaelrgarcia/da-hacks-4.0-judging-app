@@ -1,11 +1,13 @@
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import { ConvexClientProvider } from "./components/convex-client-provider";
+import Nav from "./components/nav/nav";
+import { ThemeProvider } from "./components/theme-provider";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const dmSans = DM_Sans({
+  variable: "--font-dmsans",
   subsets: ["latin"],
 });
 
@@ -21,10 +23,24 @@ export default function RootLayout({
 }>) {
   return (
     <ConvexAuthNextjsServerProvider>
-      <html lang="en" className={`${inter.variable} antialiased`}>
-        <body className="min-h-svh">
-          <ConvexClientProvider>{children}</ConvexClientProvider>
-        </body>
+      <html
+        lang="en"
+        className={`${dmSans.variable} antialiased`}
+        suppressHydrationWarning
+      >
+        <ConvexClientProvider>
+          <body className="min-h-screen flex flex-col">
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <Nav />
+              {children}
+            </ThemeProvider>
+          </body>
+        </ConvexClientProvider>
       </html>
     </ConvexAuthNextjsServerProvider>
   );
