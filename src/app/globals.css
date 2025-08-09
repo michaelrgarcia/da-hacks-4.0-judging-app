@@ -212,6 +212,12 @@
   }
 }
 
-@utility z-navbar {
-  z-index: 400;
+@utility centered-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  min-height: 80svh;
 }
