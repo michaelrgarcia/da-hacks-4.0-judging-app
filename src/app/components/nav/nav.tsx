@@ -1,16 +1,21 @@
 "use client";
 
+import { api } from "@/lib/convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useQuery } from "convex/react";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import ThemeToggle from "../theme-toggle";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button, buttonVariants } from "../ui/button";
 
 function Nav() {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
 
   const { signIn } = useAuthActions();
+
+  const currentUser = useQuery(api.user.currentUser);
 
   return (
     <header className="bg-background/80 sticky top-0 z-50 w-full border-b backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -47,12 +52,23 @@ function Nav() {
 
         <div className=" gap-3 items-center lg:flex hidden">
           <ThemeToggle />
-          <Button
-            onClick={() => void signIn("google")}
-            className="cursor-pointer"
-          >
-            Log In
-          </Button>
+          {currentUser ? (
+            <div>
+              <Avatar>
+                <AvatarImage src={currentUser.image} />
+                <AvatarFallback>
+                  {currentUser.name?.slice(0, 1).toLocaleUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          ) : (
+            <Button
+              onClick={() => void signIn("google")}
+              className="cursor-pointer"
+            >
+              Log In
+            </Button>
+          )}
         </div>
 
         <button
@@ -104,16 +120,36 @@ function Nav() {
             >
               Leaderboard
             </Link>
+            {currentUser ? (
+              <Link
+                href={`/profile/${currentUser._id}`}
+                className={buttonVariants({
+                  variant: "ghost",
+                  className: "text-xl py-6 gap-3",
+                })}
+              >
+                <Avatar>
+                  <AvatarImage src={currentUser.image} />
+                  <AvatarFallback>
+                    {currentUser.name?.slice(0, 2).toLocaleUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-medium select-none text-lg">
+                  My Profile
+                </span>
+              </Link>
+            ) : (
+              <Button
+                className="w-full mt-2 cursor-pointer"
+                onClick={() => void signIn("google")}
+              >
+                Log In
+              </Button>
+            )}
             <div className="flex items-center gap-3 justify-center mt-2 font-medium select-none">
               <ThemeToggle />
               Toggle Theme
             </div>
-            <Button
-              className="w-full mt-2 cursor-pointer"
-              onClick={() => void signIn("google")}
-            >
-              Log In
-            </Button>
           </nav>
         </div>
       )}
