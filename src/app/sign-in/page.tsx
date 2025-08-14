@@ -17,7 +17,11 @@ async function SignIn() {
   const token = await convexAuthNextjsToken();
   const user = await fetchQuery(api.user.currentUser, {}, { token });
 
-  if (user) return redirect("/dashboard");
+  if (user) {
+    if (user.role === "mentor") return redirect("/dashboard");
+
+    if (user.role === "director") return redirect("/admin");
+  }
 
   return (
     <main className="centered-main space-y-4">
