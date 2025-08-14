@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { api } from "@/lib/convex/_generated/api";
+import { capitalize } from "@/lib/utils";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 import { LogOut, Settings, User } from "lucide-react";
@@ -20,20 +21,6 @@ export function UserMenu() {
   const currentUser = useQuery(api.user.currentUser);
 
   if (!currentUser) return null;
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "bg-red-100 text-red-800";
-      case "staff":
-        return "bg-blue-100 text-blue-800";
-      case "participant":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
 
   return (
     <DropdownMenu>
@@ -49,17 +36,12 @@ export function UserMenu() {
         <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium">{currentUser.name}</p>
-            <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+            <p className="text-xs text-muted-foreground">
+              {capitalize(currentUser.role)}
+            </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-
-        {/* {currentUser.role === "admin" && (
-          <DropdownMenuItem>
-            <Shield className="mr-2 h-4 w-4" />
-            Admin Panel
-          </DropdownMenuItem>
-        )} */}
 
         <DropdownMenuItem className="hover:bg-muted cursor-pointer">
           <Settings className="mr-2 h-4 w-4" />
