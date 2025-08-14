@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, QueryCtx } from "./_generated/server";
 
-async function getCurrentUser(ctx: QueryCtx) {
+export async function getCurrentUser(ctx: QueryCtx) {
   const userId = await getAuthUserId(ctx);
 
   if (userId === null) {
