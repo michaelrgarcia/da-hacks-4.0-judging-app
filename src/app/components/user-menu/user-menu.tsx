@@ -12,7 +12,8 @@ import { api } from "@/lib/convex/_generated/api";
 import { capitalize } from "@/lib/utils";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
-import { LogOut, Settings, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
+import ThemeToggle from "../theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export function UserMenu() {
@@ -43,10 +44,10 @@ export function UserMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem className="hover:bg-muted cursor-pointer">
-          <Settings className="mr-2 h-4 w-4" />
-          Settings
-        </DropdownMenuItem>
+        <div className="p-1 text-sm gap-2 select-none flex items-center">
+          <ThemeToggle />
+          Toggle theme
+        </div>
 
         <DropdownMenuSeparator />
         <DropdownMenuItem
