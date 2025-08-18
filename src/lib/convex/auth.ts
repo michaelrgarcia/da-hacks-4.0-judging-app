@@ -25,8 +25,11 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       const isMentor = hierarchy.mentors.some(
         (email) => args.profile.email === email
       );
+      const isJudge = hierarchy.judges.some(
+        (email) => args.profile.email === email
+      );
 
-      if (!isDirector && !isMentor)
+      if (!isDirector && !isMentor && !isJudge)
         return {
           success: false,
           message: `Attempted login by ${args.profile.email}.`,
@@ -36,7 +39,13 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         name: args.profile.name,
         email: args.profile.email,
         image: args.profile.image,
-        role: isDirector ? "director" : isMentor ? "mentor" : undefined,
+        role: isDirector
+          ? "director"
+          : isMentor
+            ? "mentor"
+            : isJudge
+              ? "judge"
+              : undefined,
       });
     },
   },
