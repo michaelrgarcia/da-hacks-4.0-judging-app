@@ -25,7 +25,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       const isMentor = hierarchy.mentors.some(
         (email) => args.profile.email === email
       );
-      const isJudge = hierarchy.judges.some(
+      const isJudge = hierarchy.judges!.some(
         (email) => args.profile.email === email
       );
 
