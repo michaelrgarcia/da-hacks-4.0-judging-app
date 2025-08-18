@@ -1,15 +1,5 @@
 import { v } from "convex/values";
 
-export const projectValidator = v.object({
-  devpostId: v.string(),
-  name: v.string(),
-  description: v.optional(v.string()),
-  teamMembers: v.array(v.string()),
-  track: v.string(),
-  devpostUrl: v.string(),
-  imageUrl: v.optional(v.string()),
-});
-
 export const presentationSlotValidator = v.object({
   projectName: v.string(),
   startTime: v.number(),
@@ -27,22 +17,25 @@ export const presentationSlotValidator = v.object({
 });
 
 export const scoreValidator = v.object({
-  projectName: v.string(),
-  judgeName: v.string(),
-  criteria: v.object({
-    applicationFeasibility: v.number(),
-    functionalityQuality: v.number(),
-    creativityInnovation: v.number(),
-    technicalComplexity: v.number(),
-    presentation: v.number(),
-  }),
+  judgeId: v.id("users"),
+  criteria: v.record(v.string(), v.number()),
+});
+
+export const projectValidator = v.object({
+  devpostId: v.string(),
+  name: v.string(),
+  description: v.optional(v.string()),
+  teamMembers: v.array(v.string()),
+  track: v.string(),
+  devpostUrl: v.string(),
+  imageUrl: v.optional(v.string()),
+  scores: v.array(scoreValidator),
 });
 
 export const judgingSessionValidator = v.object({
   projects: v.array(projectValidator),
   judges: v.array(v.string()),
   presentations: v.array(presentationSlotValidator),
-  scores: v.array(scoreValidator),
   isActive: v.boolean(),
   currentPresentation: v.optional(v.string()),
 });
