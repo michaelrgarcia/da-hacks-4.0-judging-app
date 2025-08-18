@@ -4,6 +4,7 @@ import { DM_Sans } from "next/font/google";
 import { ConvexClientProvider } from "./components/convex-client-provider";
 import Nav from "./components/nav/nav";
 import { ThemeProvider } from "./components/theme-provider";
+import { Toaster } from "./components/ui/sonner";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -38,6 +39,7 @@ export default function RootLayout({
             >
               <Nav />
               {children}
+              <Toaster />
             </ThemeProvider>
           </body>
         </ConvexClientProvider>
