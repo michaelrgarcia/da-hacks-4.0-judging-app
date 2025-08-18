@@ -18,7 +18,9 @@ async function SignIn() {
   const user = await fetchQuery(api.user.currentUser, {}, { token });
 
   if (user) {
-    if (user.role === "mentor") return redirect("/dashboard");
+    if (user.role === "judge") return redirect("/scoring");
+
+    if (user.role === "mentor") return redirect("/presentations");
 
     if (user.role === "director") return redirect("/admin");
   }

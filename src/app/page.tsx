@@ -8,11 +8,17 @@ async function Home() {
   const token = await convexAuthNextjsToken();
   const user = await fetchQuery(api.user.currentUser, {}, { token });
 
-  // CHECK ROLES
-  if (user) {
-    return redirect("/dashboard");
-  } else {
-    return redirect("/sign-in");
+  if (!user) return redirect("/sign-in");
+
+  switch (user.role) {
+    case "judge":
+      return redirect("/scoring");
+
+    case "mentor":
+      return redirect("/presentations");
+
+    case "director":
+      return redirect("/admin");
   }
 }
 

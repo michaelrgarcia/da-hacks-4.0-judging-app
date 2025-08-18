@@ -33,7 +33,7 @@ function ProviderLogins() {
 
   const handleSignIn = () => {
     return void signIn("google", {
-      redirectTo: fullRedirectPath ?? "/dashboard",
+      redirectTo: fullRedirectPath ?? "/",
     });
   };
 
