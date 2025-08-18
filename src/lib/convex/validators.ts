@@ -55,5 +55,5 @@ export const userValidator = v.object({
 export const hierarchyValidator = v.object({
   directors: v.array(v.string()),
   mentors: v.array(v.string()),
-  judges: v.optional(v.array(v.string())),
+  judges: v.array(v.string()),
 });
