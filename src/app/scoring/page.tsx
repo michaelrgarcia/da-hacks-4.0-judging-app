@@ -1,0 +1,298 @@
+"use client";
+
+import { Button, buttonVariants } from "@/app/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Label } from "@/app/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { genericErrMsg } from "@/lib/constants/errorMessages";
+import { criteria } from "@/lib/constants/judging";
+import { api } from "@/lib/convex/_generated/api";
+import type { Criteria, Criterions, Project } from "@/lib/types/judging";
+import { scoreFormSchema, type scoreFormSchemaType } from "@/lib/zod/forms";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery } from "convex/react";
+import { Award, ExternalLink, Send } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../components/ui/form";
+import { Slider } from "../components/ui/slider";
+
+const criteriaLabels = {
+  applicationFeasibility: "Application Feasibility (25%)",
+  functionalityQuality: "Functionality & Quality (20%)",
+  creativityInnovation: "Creativity & Innovation (25%)",
+  technicalComplexity: "Technical Complexity (20%)",
+  presentation: "Presentation (10%)",
+};
+
+const scoreDescriptions = {
+  1: "Poor",
+  2: "Below Average",
+  3: "Average",
+  4: "Good",
+  5: "Excellent",
+};
+
+const createDefaultValues = (): Criteria => {
+  return criteria.reduce((acc, criterion) => {
+    acc[criterion] = 0;
+
+    return acc;
+  }, {} as Criteria);
+};
+
+function ScoringPage() {
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  const router = useRouter();
+
+  const form = useForm<scoreFormSchemaType>({
+    resolver: zodResolver(scoreFormSchema),
+    defaultValues: createDefaultValues(),
+  });
+
+  const currentUser = useQuery(api.user.currentUser);
+  const submitScore = useMutation(api.judging.submitScore);
+
+  useEffect(() => {
+    if (currentUser === null) {
+      router.push(`/sign-in?redirectTo=${encodeURIComponent("/scoring")}`);
+    }
+
+    if (currentUser && currentUser.role !== "judge") {
+      router.push("/unauthorized");
+    }
+  }, [currentUser, router]);
+
+  if (currentUser === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentUser === null) {
+    return null;
+  }
+
+  const handleProjectSelect = (devpostId: string) => {
+    if (!currentUser.judgingSession) return;
+
+    const project = currentUser.judgingSession.projects.find(
+      (p) => p.devpostId === devpostId
+    );
+
+    if (!project) return toast("Error selecting project. Please try again.");
+
+    setSelectedProject(project);
+  };
+
+  const onSubmit = async (criteria: scoreFormSchemaType) => {
+    if (!selectedProject) return;
+
+    try {
+      const { success, message } = await submitScore({
+        projectDevpostId: selectedProject.devpostId,
+        criteria,
+      });
+
+      if (!success) throw new Error(message);
+
+      form.reset();
+
+      return toast(message);
+    } catch (err: unknown) {
+      console.error("Failed to submit score:", err);
+
+      return toast(genericErrMsg);
+    }
+  };
+
+  return (
+    <main className="container mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">
+                  Select Project to Score
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Select
+                  value={selectedProject?.devpostId}
+                  onValueChange={handleProjectSelect}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentUser?.judgingSession?.projects.map((project) => (
+                      <SelectItem
+                        key={project.devpostId}
+                        value={project.devpostId}
+                      >
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+
+            {!selectedProject && (
+              <Card className="h-96 flex items-center justify-center">
+                <CardContent className="text-center">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Award className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Select a project
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Choose a project from the dropdown above to begin scoring
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="space-y-8">
+              {selectedProject && (
+                <>
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-xl font-semibold">
+                            {selectedProject.name}
+                          </CardTitle>
+                        </div>
+                        <div className="flex gap-2">
+                          <Link
+                            href={selectedProject.devpostUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={buttonVariants({
+                              variant: "outline",
+                              size: "sm",
+                            })}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Devpost
+                          </Link>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-foreground mb-4 leading-relaxed">
+                        {selectedProject.description}
+                      </p>
+                      <div>
+                        <Label className="text-sm font-medium text-foreground">
+                          Team Members
+                        </Label>
+                        <p className="text-muted-foreground mt-1">
+                          {selectedProject.teamMembers.join(", ")}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-xl font-semibold">
+                        Evaluation Criteria
+                      </CardTitle>
+                      <p className="text-muted-foreground">
+                        Rate each criterion from 1 (Poor) to 5 (Excellent)
+                      </p>
+                    </CardHeader>
+                    <CardContent className="space-y-8">
+                      {Object.entries(criteriaLabels).map(([key, label]) => (
+                        <FormField
+                          key={key}
+                          control={form.control}
+                          name={key as Criterions}
+                          render={({ field }) => (
+                            <FormItem className="space-y-3">
+                              <div>
+                                <FormLabel className="text-base font-medium text-foreground">
+                                  {label}
+                                </FormLabel>
+                                {field.value > 0 ? (
+                                  <p className="text-sm text-accent font-medium mt-1">
+                                    {
+                                      scoreDescriptions[
+                                        field.value as keyof typeof scoreDescriptions
+                                      ]
+                                    }
+                                  </p>
+                                ) : (
+                                  "Not rated"
+                                )}
+                              </div>
+                              <FormControl>
+                                <Slider
+                                  value={[field.value]}
+                                  max={5}
+                                  min={1}
+                                  step={1}
+                                  className="w-full"
+                                  onValueChange={(value) =>
+                                    field.onChange(value[0])
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+
+                      <Button
+                        type="submit"
+                        size="lg"
+                        className="w-full h-12 text-base font-medium"
+                      >
+                        <Send className="h-5 w-5 mr-1" />
+                        Submit Score
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </div>
+          </form>
+        </Form>
+      </div>
+    </main>
+  );
+}
+
+export default ScoringPage;
