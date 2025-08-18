@@ -1,1 +1,1 @@
-export const noHeaderPages = ["/sign-in"];
+export const noHeaderPages = ["/sign-in", "/unauthorized"];
