@@ -2,6 +2,7 @@ import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import { ConvexClientProvider } from "./components/convex-client-provider";
+import Nav from "./components/nav/nav";
 import { ThemeProvider } from "./components/theme-provider";
 import "./globals.css";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
+              <Nav />
               {children}
             </ThemeProvider>
           </body>
