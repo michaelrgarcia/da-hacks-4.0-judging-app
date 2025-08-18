@@ -1,6 +1,10 @@
 import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
-import { hierarchyValidator, userValidator } from "./validators";
+import {
+  hierarchyValidator,
+  projectValidator,
+  userValidator,
+} from "./validators";
 
 const schema = defineSchema({
   ...authTables,
@@ -8,6 +12,7 @@ const schema = defineSchema({
     .index("email", ["email"])
     .index("by_role", ["role"]),
   hierarchy: defineTable(hierarchyValidator),
+  projects: defineTable(projectValidator),
 });
 
 export default schema;
