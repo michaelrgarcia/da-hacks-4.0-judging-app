@@ -1,12 +1,12 @@
 import { v } from "convex/values";
 
 export const projectValidator = v.object({
+  devpostId: v.string(),
   name: v.string(),
   description: v.optional(v.string()),
   teamMembers: v.array(v.string()),
   track: v.string(),
-  demoUrl: v.optional(v.string()),
-  githubUrl: v.optional(v.string()),
+  devpostUrl: v.string(),
   imageUrl: v.optional(v.string()),
 });
 
@@ -62,4 +62,5 @@ export const userValidator = v.object({
 export const hierarchyValidator = v.object({
   directors: v.array(v.string()),
   mentors: v.array(v.string()),
+  judges: v.array(v.string()),
 });
