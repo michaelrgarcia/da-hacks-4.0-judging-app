@@ -1,1 +1,1 @@
-export const roles = ["director", "mentor"] as const;
+export const roles = ["director", "mentor", "judge"] as const;
