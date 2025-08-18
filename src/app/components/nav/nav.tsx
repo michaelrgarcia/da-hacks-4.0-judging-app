@@ -1,11 +1,14 @@
 "use client";
 
+import { noHeaderPages } from "@/lib/constants/noHeaderPages";
 import { capitalize } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "../user-menu/user-menu";
 
 function Nav() {
   const pathname = usePathname();
+
+  if (noHeaderPages.includes(pathname)) return null;
 
   return (
     <header className="border-b bg-background sticky top-0 z-50">
