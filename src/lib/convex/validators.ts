@@ -24,11 +24,8 @@ export const scoreValidator = v.object({
 export const projectValidator = v.object({
   devpostId: v.string(),
   name: v.string(),
-  description: v.optional(v.string()),
   teamMembers: v.array(v.string()),
-  track: v.string(),
   devpostUrl: v.string(),
-  imageUrl: v.optional(v.string()),
   scores: v.array(scoreValidator),
 });
 
@@ -37,7 +34,9 @@ export const judgingSessionValidator = v.object({
   judges: v.array(v.string()),
   presentations: v.array(presentationSlotValidator),
   isActive: v.boolean(),
-  currentPresentation: v.optional(v.string()),
+  currentProjectPresenting: v.optional(v.string()),
+  previousProjectName: v.optional(v.string()),
+  mentorName: v.string(),
 });
 
 export const userValidator = v.object({
