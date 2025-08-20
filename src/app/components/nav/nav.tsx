@@ -12,7 +12,7 @@ function Nav() {
 
   return (
     <header className="border-b bg-background sticky top-0 z-50">
-      <div className="container mx-auto px-6 py-4">
+      <div className="container mx-auto px-6 py-3">
         <div className="flex items-center gap-4">
           <div className="ml-2">
             <h1 className="text-lg sm:text-xl font-semibold">
