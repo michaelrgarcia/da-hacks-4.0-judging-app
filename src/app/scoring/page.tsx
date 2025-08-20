@@ -22,12 +22,21 @@ import type { Criteria, Criterions, Project } from "@/lib/types/judging";
 import { scoreFormSchema, type scoreFormSchemaType } from "@/lib/zod/forms";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
-import { Award, ExternalLink, Send } from "lucide-react";
+import { Award, ExternalLink, Info, Send } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -36,6 +45,7 @@ import {
   FormLabel,
   FormMessage,
 } from "../components/ui/form";
+import Loading from "../components/ui/loading";
 import { Slider } from "../components/ui/slider";
 
 const criteriaLabels = {
@@ -64,6 +74,8 @@ const createDefaultValues = (): Criteria => {
 
 function ScoringPage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [showNoProjectsDialog, setShowNoProjectsDialog] =
+    useState<boolean>(false);
 
   const router = useRouter();
 
@@ -77,43 +89,45 @@ function ScoringPage() {
 
   useEffect(() => {
     if (currentUser === null) {
-      router.push(`/sign-in?redirectTo=${encodeURIComponent("/scoring")}`);
+      router.push("/sign-in");
     }
 
     if (currentUser && currentUser.role !== "judge") {
       router.push("/unauthorized");
     }
+
+    if (currentUser && !currentUser.judgingSession) {
+      setShowNoProjectsDialog(true);
+    }
   }, [currentUser, router]);
 
-  if (currentUser === undefined) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (currentUser === null) {
-    return null;
-  }
-
   const handleProjectSelect = (devpostId: string) => {
-    if (!currentUser.judgingSession) return;
+    if (!currentUser?.judgingSession) return;
 
     const project = currentUser.judgingSession.projects.find(
       (p) => p.devpostId === devpostId
     );
 
-    if (!project) return toast("Error selecting project. Please try again.");
+    if (!project)
+      return toast("Could not find the selected project. Please try again.");
 
-    setSelectedProject(project);
+    return setSelectedProject(project);
   };
 
   const onSubmit = async (criteria: scoreFormSchemaType) => {
     if (!selectedProject) return;
+
+    if (!currentUser || !currentUser.judgingSession) return;
+
+    if (currentUser.judgingSession.currentProjectPresenting) {
+      return toast("Please wait for the current presentation to finish.");
+    }
+
+    if (
+      currentUser.judgingSession.previousProjectName !== selectedProject.name
+    ) {
+      return toast("Please only submit scores when teams finish presenting.");
+    }
 
     try {
       const { success, message } = await submitScore({
@@ -121,7 +135,11 @@ function ScoringPage() {
         criteria,
       });
 
-      if (!success) throw new Error(message);
+      if (!success) {
+        const errorMsg = message;
+
+        throw new Error(errorMsg);
+      }
 
       form.reset();
 
@@ -133,51 +151,120 @@ function ScoringPage() {
     }
   };
 
+  if (currentUser === undefined) {
+    return <Loading />;
+  }
+
+  if (currentUser === null) {
+    return null;
+  }
+
+  const judgingActive = currentUser.judgingSession
+    ? currentUser.judgingSession.isActive
+    : false;
+
   return (
     <main className="container mx-auto px-6 py-8">
-      <div className="max-w-4xl mx-auto">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">
-                  Select Project to Score
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Select
-                  value={selectedProject?.devpostId}
-                  onValueChange={handleProjectSelect}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currentUser?.judgingSession?.projects.map((project) => (
-                      <SelectItem
-                        key={project.devpostId}
-                        value={project.devpostId}
-                      >
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
+      <Dialog
+        open={showNoProjectsDialog}
+        onOpenChange={(open) => {
+          if (!open) setShowNoProjectsDialog(false);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 mb-2">
+              <Info /> Notice
+            </DialogTitle>
+            <DialogDescription>
+              You have not been assigned any projects to judge. If this is a
+              mistake, contact Michael from the Tech team.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">OK</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div
+          className={`p-4 rounded-lg border-2 ${
+            judgingActive
+              ? "border-green-500 bg-green-500/15"
+              : "border-red-500 bg-red-500/15"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-4 h-4 rounded-full ${
+                judgingActive
+                  ? "bg-green-500 shadow-sm animate-pulse"
+                  : "bg-red-500"
+              }`}
+            ></div>
+            <span
+              className={`font-semibold text-lg ${
+                judgingActive ? "text-green-500" : "text-red-500"
+              }`}
+            >
+              {judgingActive ? "Judging has began" : "Judging has not began"}
+            </span>
+          </div>
+        </div>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">
+              Select project to score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select
+              value={selectedProject?.devpostId}
+              onValueChange={handleProjectSelect}
+              disabled={!judgingActive}
+            >
+              <SelectTrigger className="w-full sm:w-70">
+                <SelectValue placeholder="Choose a project" />
+              </SelectTrigger>
+              <SelectContent>
+                {currentUser.judgingSession?.projects.map((project) => (
+                  <SelectItem key={project.devpostId} value={project.devpostId}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
             {!selectedProject && (
               <Card className="h-96 flex items-center justify-center">
                 <CardContent className="text-center">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Award className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    Select a project
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Choose a project from the dropdown above to begin scoring
-                  </p>
+                  {!judgingActive && (
+                    <h3 className="text-lg font-semibold">
+                      Please wait for judging to start.
+                    </h3>
+                  )}
+
+                  {judgingActive && (
+                    <>
+                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Award className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">
+                        Select a project
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Choose a project from the dropdown above to begin
+                        scoring
+                      </p>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -210,9 +297,6 @@ function ScoringPage() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-foreground mb-4 leading-relaxed">
-                        {selectedProject.description}
-                      </p>
                       <div>
                         <Label className="text-sm font-medium text-foreground">
                           Team Members
