@@ -1,39 +1,14 @@
 "use client";
 
-// import { profilePath } from "./config";
-
 import { useAuthActions } from "@convex-dev/auth/react";
-
-// import { toastManager } from "@/lib/toast";
-import { useSearchParams } from "next/navigation";
 import { Button } from "../ui/button";
 
 function ProviderLogins() {
-  const searchParams = useSearchParams();
-  const redirectPath = searchParams.get("redirectTo");
-  const decodedRedirectPath = redirectPath
-    ? decodeURIComponent(redirectPath)
-    : null;
-
-  const allParams = new URLSearchParams();
-
-  for (const [key, value] of searchParams.entries()) {
-    if (key !== "redirectTo") {
-      allParams.set(key, value);
-    }
-  }
-
-  const fullRedirectPath = decodedRedirectPath
-    ? allParams.toString()
-      ? `${decodedRedirectPath}?${allParams.toString()}`
-      : decodedRedirectPath
-    : null;
-
   const { signIn } = useAuthActions();
 
   const handleSignIn = () => {
     return void signIn("google", {
-      redirectTo: fullRedirectPath ?? "/",
+      redirectTo: "/",
     });
   };
 
