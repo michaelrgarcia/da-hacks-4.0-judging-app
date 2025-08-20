@@ -1,6 +1,6 @@
 import Google from "@auth/core/providers/google";
 import { convexAuth } from "@convex-dev/auth/server";
-import { Infer } from "convex/values";
+import { ConvexError, Infer } from "convex/values";
 import { hierarchyValidator } from "./validators";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
@@ -30,12 +30,9 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       );
 
       if (!isDirector && !isMentor && !isJudge)
-        return {
-          success: false,
-          message: `Attempted login by ${args.profile.email}.`,
-        };
+        throw new ConvexError(`Attempted login by ${args.profile.email}.`);
 
-      return await ctx.db.insert("users", {
+      const newUserId = await ctx.db.insert("users", {
         name: args.profile.name,
         email: args.profile.email,
         image: args.profile.image,
@@ -47,6 +44,20 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
               ? "judge"
               : undefined,
       });
+
+      if (isDirector) {
+        await ctx.db.patch(newUserId, {
+          judgingSession: {
+            projects: [],
+            judges: [],
+            presentations: [],
+            isActive: false,
+            mentorName: args.profile.name,
+          },
+        });
+      }
+
+      return newUserId;
     },
   },
 });
