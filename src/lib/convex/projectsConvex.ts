@@ -55,6 +55,7 @@ export const listAllProjects = internalQuery({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
+
     if (!user) return null;
 
     if (user.role !== "director") {
