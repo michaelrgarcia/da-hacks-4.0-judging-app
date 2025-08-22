@@ -101,6 +101,12 @@ function ScoringPage() {
     }
   }, [currentUser, router]);
 
+  useEffect(() => {
+    if (currentUser?.judgingSession?.isActive === false) {
+      setSelectedProject(null);
+    }
+  }, [currentUser]);
+
   const handleProjectSelect = (devpostId: string) => {
     if (!currentUser?.judgingSession) return;
 
@@ -270,7 +276,7 @@ function ScoringPage() {
             )}
 
             <div className="space-y-8">
-              {selectedProject && (
+              {selectedProject && judgingActive && (
                 <>
                   <Card>
                     <CardHeader>
@@ -331,11 +337,11 @@ function ScoringPage() {
                                 </FormLabel>
                                 {field.value > 0 ? (
                                   <p className="text-sm text-accent font-medium mt-1">
-                                    {
+                                    {`${field.value} (${
                                       scoreDescriptions[
                                         field.value as keyof typeof scoreDescriptions
                                       ]
-                                    }
+                                    })`}
                                   </p>
                                 ) : (
                                   "Not rated"
@@ -362,7 +368,7 @@ function ScoringPage() {
                       <Button
                         type="submit"
                         size="lg"
-                        className="w-full h-12 text-base font-medium"
+                        className="w-full h-11 text-md font-medium cursor-pointer"
                       >
                         <Send className="h-5 w-5 mr-1" />
                         Submit Score
