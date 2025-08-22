@@ -54,8 +54,6 @@ function AdminPage() {
 
       return toast(errorMsg);
     }
-
-    return toast(message);
   };
 
   const handleEndJudging = async () => {
@@ -69,8 +67,6 @@ function AdminPage() {
 
       return toast(errorMsg);
     }
-
-    return toast(message);
   };
 
   const handleCreateGroups = async () => {

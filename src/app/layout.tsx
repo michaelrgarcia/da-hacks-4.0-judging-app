@@ -2,6 +2,7 @@ import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import { ConvexClientProvider } from "./components/convex-client-provider";
+import JudgingStatus from "./components/judging-status";
 import Nav from "./components/nav/nav";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
@@ -40,6 +41,7 @@ export default function RootLayout({
               <Nav />
               {children}
               <Toaster />
+              <JudgingStatus />
             </ThemeProvider>
           </body>
         </ConvexClientProvider>
