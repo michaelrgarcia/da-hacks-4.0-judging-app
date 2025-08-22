@@ -13,224 +13,10 @@ import {
   internalQuery,
   mutation,
   query,
+  type QueryCtx,
 } from "./_generated/server";
 import { getCurrentUser } from "./user";
 import { judgingSessionValidator } from "./validators";
-
-export const beginJudging = mutation({
-  args: { cursor: v.union(v.string(), v.null()), numItems: v.number() },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-
-    if (!user) return { success: false, message: noAuthMsg };
-
-    if (user.role !== "director") {
-      return { success: false, message: notDirectorMsg };
-    }
-
-    const staff = await ctx.db.query("users").paginate(args);
-
-    const { page, isDone, continueCursor } = staff;
-
-    for (const staffMember of page) {
-      if (staffMember.judgingSession) {
-        await ctx.db.patch(staffMember._id, {
-          judgingSession: { ...staffMember.judgingSession, isActive: true },
-        });
-      } else {
-        console.warn(`${staffMember.name} is not assigned a group of judges.`);
-
-        continue;
-      }
-    }
-
-    if (!isDone) {
-      await ctx.scheduler.runAfter(0, api.judging.beginJudging, {
-        cursor: continueCursor,
-        numItems: args.numItems,
-      });
-
-      return { success: true, message: "Processing..." };
-    } else {
-      return { success: true, message: "Judging has began." };
-    }
-  },
-});
-
-export const endJudging = mutation({
-  args: { cursor: v.union(v.string(), v.null()), numItems: v.number() },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-
-    if (!user) return { success: false, message: noAuthMsg };
-
-    if (user.role !== "director") {
-      return { success: false, message: notDirectorMsg };
-    }
-
-    const staff = await ctx.db.query("users").paginate(args);
-
-    const { page, isDone, continueCursor } = staff;
-
-    for (const staffMember of page) {
-      if (staffMember.judgingSession) {
-        await ctx.db.patch(staffMember._id, {
-          judgingSession: { ...staffMember.judgingSession, isActive: false },
-        });
-      } else {
-        console.warn(`${staffMember.name} is not assigned a group of judges.`);
-
-        continue;
-      }
-    }
-
-    if (!isDone) {
-      await ctx.scheduler.runAfter(0, api.judging.endJudging, {
-        cursor: continueCursor,
-        numItems: args.numItems,
-      });
-
-      return { success: true, message: "Processing..." };
-    } else {
-      return { success: true, message: "Judging has ended." };
-    }
-  },
-});
-
-export const submitScore = mutation({
-  args: {
-    projectDevpostId: v.string(),
-    criteria: v.record(v.string(), v.number()),
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-
-    if (!user) return { success: false, message: noAuthMsg };
-
-    if (user.role !== "judge") {
-      return { success: false, message: notJudgeMsg };
-    }
-
-    if (!user.judgingSession)
-      return {
-        success: false,
-        message:
-          "You have not been assigned any projects. If this is a mistake, contact Michael from the Tech team.",
-      };
-
-    const project = await ctx.db
-      .query("projects")
-      .withIndex("by_devpostId", (q) =>
-        q.eq("devpostId", args.projectDevpostId)
-      )
-      .first();
-
-    if (!project)
-      return {
-        success: false,
-        message:
-          "This project does not exist. If this is a mistake, contact Michael from the Tech team.",
-      };
-
-    const newScore: Score = { judgeId: user._id, criteria: args.criteria };
-    const existingScore = project.scores.find(
-      (score) => score.judgeId === user._id
-    );
-
-    if (existingScore) {
-      const existingScoreIndex = project.scores.indexOf(existingScore);
-
-      const scoresCopy = structuredClone(project.scores);
-      scoresCopy[existingScoreIndex] = newScore;
-
-      await ctx.db.patch(project._id, { scores: scoresCopy });
-    } else {
-      await ctx.db.patch(project._id, {
-        scores: [...project.scores, newScore],
-      });
-    }
-
-    return { success: true, message: "Successfully submitted score." };
-  },
-});
-
-export const getGroups = query({
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-
-    if (!user) return null;
-
-    if (user.role !== "director") {
-      return null;
-    }
-
-    const judges = await ctx.db
-      .query("users")
-      .withIndex("by_role", (q) => q.eq("role", "judge"))
-      .collect();
-
-    const judgesWithSessions = judges.filter((judge) => {
-      if (!judge.judgingSession) {
-        console.warn(`${judge.name} is not assigned a group of judges.`);
-
-        return false;
-      }
-
-      return true;
-    });
-
-    const groups = judgesWithSessions.reduce(
-      (acc, judge) => {
-        const mentorName = judge.judgingSession!.mentorName;
-
-        if (!acc[mentorName]) {
-          acc[mentorName] = {
-            mentorName,
-            judges: [],
-          };
-        }
-
-        acc[mentorName].judges.push(judge);
-
-        return acc;
-      },
-      {} as Record<
-        string,
-        {
-          mentorName: string;
-          judges: User[];
-        }
-      >
-    );
-
-    const groupsArray = Object.values(groups);
-
-    return groupsArray;
-  },
-});
-
-export const patchUserJudgingSession = internalMutation({
-  args: { userId: v.id("users"), judgingSession: judgingSessionValidator },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, { judgingSession: args.judgingSession });
-  },
-});
-
-export const listNonDirectors = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-
-    if (!user) return null;
-
-    if (user.role !== "director") return null;
-
-    return await ctx.db
-      .query("users")
-      .filter((q) => q.neq(q.field("role"), "director"))
-      .collect();
-  },
-});
 
 export const createGroups = action({
   handler: async (ctx) => {
@@ -247,12 +33,35 @@ export const createGroups = action({
     if (!nonDirectors)
       return {
         success: false,
+        message: "Failed to retrieve users who are not directors.",
+        groups: [] as Group[],
+      };
+
+    if (nonDirectors.length === 0)
+      return {
+        success: false,
         message: "There are no judges or mentors.",
         groups: [] as Group[],
       };
 
     const mentors = nonDirectors.filter((u) => u.role === "mentor");
     const judges = nonDirectors.filter((u) => u.role === "judge");
+
+    if (mentors.length === 0) {
+      return {
+        success: false,
+        message: "There are no mentors registered.",
+        groups: [] as Group[],
+      };
+    }
+
+    if (judges.length === 0) {
+      return {
+        success: false,
+        message: "There are no judges registered.",
+        groups: [] as Group[],
+      };
+    }
 
     const groups: Group[] = mentors.map((mentor, mentorIndex) => {
       const assignedJudges = [];
@@ -375,5 +184,237 @@ export const createGroups = action({
       message: "Groups created and projects assigned.",
       groups,
     };
+  },
+});
+
+async function getGroupsHelper(ctx: QueryCtx) {
+  const user = await getCurrentUser(ctx);
+
+  if (!user) return null;
+
+  if (user.role !== "director") {
+    return null;
+  }
+
+  const judges = await ctx.db
+    .query("users")
+    .withIndex("by_role", (q) => q.eq("role", "judge"))
+    .collect();
+
+  const judgesWithSessions = judges.filter((judge) => {
+    if (judge.judgingSession === undefined) {
+      console.warn(`${judge.name} is not assigned a group of judges.`);
+
+      return false;
+    }
+
+    return true;
+  });
+
+  const groups = judgesWithSessions.reduce(
+    (acc, judge) => {
+      const mentorName = judge.judgingSession!.mentorName;
+
+      if (!acc[mentorName]) {
+        acc[mentorName] = {
+          mentorName,
+          judges: [],
+        };
+      }
+
+      acc[mentorName].judges.push(judge);
+
+      return acc;
+    },
+    {} as Record<
+      string,
+      {
+        mentorName: string;
+        judges: User[];
+      }
+    >
+  );
+
+  const groupsArray = Object.values(groups);
+
+  return groupsArray;
+}
+
+export const getGroups = query({
+  handler: async (ctx) => {
+    return await getGroupsHelper(ctx);
+  },
+});
+
+export const patchUserJudgingSession = internalMutation({
+  args: { userId: v.id("users"), judgingSession: judgingSessionValidator },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { judgingSession: args.judgingSession });
+  },
+});
+
+export const listNonDirectors = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+
+    if (!user) return null;
+
+    if (user.role !== "director") return null;
+
+    return await ctx.db
+      .query("users")
+      .filter((q) => q.neq(q.field("role"), "director"))
+      .collect();
+  },
+});
+
+export const beginJudging = mutation({
+  args: { cursor: v.union(v.string(), v.null()), numItems: v.number() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+
+    if (!user) return { success: false, message: noAuthMsg };
+
+    if (user.role !== "director") {
+      return { success: false, message: notDirectorMsg };
+    }
+
+    const groups = await getGroupsHelper(ctx);
+
+    if (!groups || groups.length === 0) {
+      return {
+        success: false,
+        message: "Please create the judge groups before starting judging.",
+      };
+    }
+
+    const staff = await ctx.db.query("users").paginate(args);
+
+    const { page, isDone, continueCursor } = staff;
+
+    for (const staffMember of page) {
+      if (staffMember.judgingSession === undefined) {
+        console.warn(
+          `${staffMember.name} (${staffMember.role}) is not assigned to a group.`
+        );
+
+        continue;
+      }
+
+      await ctx.db.patch(staffMember._id, {
+        judgingSession: { ...staffMember.judgingSession, isActive: true },
+      });
+    }
+
+    if (!isDone) {
+      await ctx.scheduler.runAfter(0, api.judging.beginJudging, {
+        cursor: continueCursor,
+        numItems: args.numItems,
+      });
+
+      return { success: true, message: "Processing..." };
+    } else {
+      return { success: true, message: "Judging has began." };
+    }
+  },
+});
+
+export const endJudging = mutation({
+  args: { cursor: v.union(v.string(), v.null()), numItems: v.number() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+
+    if (!user) return { success: false, message: noAuthMsg };
+
+    if (user.role !== "director") {
+      return { success: false, message: notDirectorMsg };
+    }
+
+    const staff = await ctx.db.query("users").paginate(args);
+
+    const { page, isDone, continueCursor } = staff;
+
+    for (const staffMember of page) {
+      if (staffMember.judgingSession === undefined) {
+        console.warn(
+          `${staffMember.name} (${staffMember.role}) is not assigned to a group.`
+        );
+
+        continue;
+      }
+
+      await ctx.db.patch(staffMember._id, {
+        judgingSession: { ...staffMember.judgingSession, isActive: false },
+      });
+    }
+
+    if (!isDone) {
+      await ctx.scheduler.runAfter(0, api.judging.endJudging, {
+        cursor: continueCursor,
+        numItems: args.numItems,
+      });
+
+      return { success: true, message: "Processing..." };
+    } else {
+      return { success: true, message: "Judging has ended." };
+    }
+  },
+});
+
+export const submitScore = mutation({
+  args: {
+    projectDevpostId: v.string(),
+    criteria: v.record(v.string(), v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+
+    if (!user) return { success: false, message: noAuthMsg };
+
+    if (user.role !== "judge") {
+      return { success: false, message: notJudgeMsg };
+    }
+
+    if (!user.judgingSession)
+      return {
+        success: false,
+        message:
+          "You have not been assigned any projects. If this is a mistake, contact Michael from the Tech team.",
+      };
+
+    const project = await ctx.db
+      .query("projects")
+      .withIndex("by_devpostId", (q) =>
+        q.eq("devpostId", args.projectDevpostId)
+      )
+      .first();
+
+    if (!project)
+      return {
+        success: false,
+        message:
+          "This project does not exist. If this is a mistake, contact Michael from the Tech team.",
+      };
+
+    const newScore: Score = { judgeId: user._id, criteria: args.criteria };
+    const existingScore = project.scores.find(
+      (score) => score.judgeId === user._id
+    );
+
+    if (existingScore) {
+      const existingScoreIndex = project.scores.indexOf(existingScore);
+
+      const scoresCopy = structuredClone(project.scores);
+      scoresCopy[existingScoreIndex] = newScore;
+
+      await ctx.db.patch(project._id, { scores: scoresCopy });
+    } else {
+      await ctx.db.patch(project._id, {
+        scores: [...project.scores, newScore],
+      });
+    }
+
+    return { success: true, message: "Successfully submitted score." };
   },
 });
