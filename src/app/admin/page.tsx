@@ -105,6 +105,7 @@ function AdminPage() {
             onClick={handleBeginJudging}
             size="sm"
             className="shadow-sm cursor-pointer"
+            disabled={creatingGroups}
           >
             <Play className="h-4 w-4 mr-2" />
             Begin Judging
@@ -121,8 +122,8 @@ function AdminPage() {
           </Button>
         )}
 
-        <div className="space-y-6 mt-8">
-          <div className="bg-muted rounded-lg shadow-sm border">
+        <div className="space-y-6 mt-2">
+          <div className="bg-card rounded-lg shadow-sm border">
             <div className="px-6 py-4 border-b border-b-muted-foreground/20 flex flex-col gap-5 sm:items-center sm:flex-row justify-between">
               <div>
                 <h3 className="text-lg font-semibold ">Judge Groups</h3>
@@ -154,7 +155,7 @@ function AdminPage() {
                   groups.map((group, groupIndex) => (
                     <Card
                       key={`group-${groupIndex}`}
-                      className="border-card-foreground/30"
+                      className="border-card-foreground/30 bg-muted"
                     >
                       <CardContent className="pt-0">
                         <div className="space-y-3">
@@ -163,7 +164,10 @@ function AdminPage() {
                               Manager
                             </p>
                             <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="text-xs">
+                              <Badge
+                                variant="outline"
+                                className="text-xs bg-card border-card-foreground/30"
+                              >
                                 Mentor
                               </Badge>
                               <span className="text-sm">
