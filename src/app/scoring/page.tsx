@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import JudgingIndicator from "../components/judging-indicator/judging-indicator";
 import {
   Dialog,
   DialogClose,
@@ -95,13 +96,13 @@ function ScoringPage() {
     if (currentUser && currentUser.role !== "judge") {
       router.push("/unauthorized");
     }
-
-    if (currentUser && !currentUser.judgingSession) {
-      setShowNoProjectsDialog(true);
-    }
   }, [currentUser, router]);
 
   useEffect(() => {
+    if (currentUser && !currentUser.judgingSession) {
+      setShowNoProjectsDialog(true);
+    }
+
     if (currentUser?.judgingSession?.isActive === false) {
       setSelectedProject(null);
     }
@@ -195,30 +196,7 @@ function ScoringPage() {
         </DialogContent>
       </Dialog>
       <div className="max-w-4xl mx-auto space-y-8">
-        <div
-          className={`p-4 rounded-lg border-2 ${
-            judgingActive
-              ? "border-green-500 bg-green-500/15"
-              : "border-red-500 bg-red-500/15"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-4 h-4 rounded-full ${
-                judgingActive
-                  ? "bg-green-500 shadow-sm animate-pulse"
-                  : "bg-red-500"
-              }`}
-            ></div>
-            <span
-              className={`font-semibold text-lg ${
-                judgingActive ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              {judgingActive ? "Judging has began" : "Judging has not began"}
-            </span>
-          </div>
-        </div>
+        <JudgingIndicator />
 
         <Card>
           <CardHeader>
