@@ -292,7 +292,7 @@ function PresentationsPage() {
                       <CheckCircle2 className="h-8 w-8" />
                     </div>
                     <p className="text-muted-foreground max-w-md">
-                      There are no more presentations scheduled for you right
+                      There are no presentations scheduled for you right
                       now.
                     </p>
                   </div>
