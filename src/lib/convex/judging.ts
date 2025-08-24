@@ -4,8 +4,9 @@ import {
   notDirectorMsg,
   notJudgeMsg,
 } from "../constants/errorMessages";
+import { defaultDurationMinutes } from "../constants/presentations";
 import type { Group, JudgingSession, Score } from "../types/judging";
-import type { User } from "../types/user";
+import type { UserDoc } from "../types/user";
 import { api, internal } from "./_generated/api";
 import {
   action,
@@ -158,25 +159,42 @@ export const createGroups = action({
 
       const judgeNames = assignedJudges.map((j) => j.name || "Unknown Judge");
 
+      const presentations = projectsPerGroup[m].map((project, index) => ({
+        projectName: project.name,
+        projectDevpostId: project.devpostId,
+        startTime: Date.now() + index * defaultDurationMinutes * 60 * 1000,
+        duration: defaultDurationMinutes,
+        status: "upcoming" as const,
+        timerState: {
+          remainingSeconds: defaultDurationMinutes * 60,
+          isPaused: false,
+        },
+      }));
+
       const sessionWithProjects: JudgingSession = {
         projects: projectsPerGroup[m],
         judges: judgeNames,
-        presentations: [],
+        presentations,
         isActive: false,
         mentorName: mentor.name || "Unknown Mentor",
       };
 
-      await ctx.runMutation(internal.judging.patchUserJudgingSession, {
-        userId: mentor._id,
-        judgingSession: sessionWithProjects,
-      });
+      const mentorPatch = ctx.runMutation(
+        internal.judging.patchUserJudgingSession,
+        {
+          userId: mentor._id,
+          judgingSession: sessionWithProjects,
+        }
+      );
 
-      for (const judge of assignedJudges) {
-        await ctx.runMutation(internal.judging.patchUserJudgingSession, {
+      const judgePatches = assignedJudges.map((judge) =>
+        ctx.runMutation(internal.judging.patchUserJudgingSession, {
           userId: judge._id,
           judgingSession: sessionWithProjects,
-        });
-      }
+        })
+      );
+
+      await Promise.all([mentorPatch, judgePatches]);
     }
 
     return {
@@ -192,7 +210,7 @@ async function getGroupsHelper(ctx: QueryCtx) {
 
   if (!user) return null;
 
-  if (user.role !== "director") {
+  if (user.role !== "director" && user.role !== "mentor") {
     return null;
   }
 
@@ -230,7 +248,7 @@ async function getGroupsHelper(ctx: QueryCtx) {
       string,
       {
         mentorName: string;
-        judges: User[];
+        judges: UserDoc[];
       }
     >
   );
@@ -238,6 +256,18 @@ async function getGroupsHelper(ctx: QueryCtx) {
   const groupsArray = Object.values(groups);
 
   return groupsArray;
+}
+
+export async function getGroupByMentorName(ctx: QueryCtx, mentorName: string) {
+  const groups = await getGroupsHelper(ctx);
+
+  if (!groups) return null;
+
+  const group = groups.find((g) => g.mentorName === mentorName);
+
+  if (!group) return null;
+
+  return group;
 }
 
 export const getGroups = query({
