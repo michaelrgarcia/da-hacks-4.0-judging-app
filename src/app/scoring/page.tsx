@@ -74,7 +74,10 @@ const createDefaultValues = (): Criteria => {
 };
 
 function ScoringPage() {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Omit<
+    Project,
+    "scores"
+  > | null>(null);
   const [showNoProjectsDialog, setShowNoProjectsDialog] =
     useState<boolean>(false);
 

@@ -149,7 +149,6 @@ export const createGroups = action({
         name: allProjects[i].name,
         teamMembers: allProjects[i].teamMembers,
         devpostUrl: allProjects[i].devpostUrl,
-        scores: [],
       });
     }
 
