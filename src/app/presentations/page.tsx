@@ -27,7 +27,7 @@ import {
 } from "../components/ui/dialog";
 import Loading from "../components/ui/loading";
 
-export default function TimingPage() {
+function PresentationsPage() {
   const [presentations, setPresentations] = useState<PresentationSlot[]>();
   const endedProjectsRef = useRef<Set<string>>(new Set());
   const [showNoProjectsDialog, setShowNoProjectsDialog] =
@@ -409,3 +409,5 @@ export default function TimingPage() {
     </div>
   );
 }
+
+export default PresentationsPage;
