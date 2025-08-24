@@ -31,7 +31,14 @@ export const projectValidator = v.object({
 });
 
 export const judgingSessionValidator = v.object({
-  projects: v.array(projectValidator),
+  projects: v.array(
+    v.object({
+      devpostId: v.string(),
+      name: v.string(),
+      teamMembers: v.array(v.string()),
+      devpostUrl: v.string(),
+    })
+  ),
   judges: v.array(v.string()),
   presentations: v.array(presentationSlotValidator),
   isActive: v.boolean(),
