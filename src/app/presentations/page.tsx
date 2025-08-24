@@ -248,7 +248,9 @@ function PresentationsPage() {
     }
   };
 
-  if (!presentations) return <Loading />;
+  if (currentUser === undefined) return <Loading />;
+
+  if (currentUser === null) return null;
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -282,7 +284,7 @@ function PresentationsPage() {
 
         <div className="max-w-4xl mx-auto">
           <div className="grid gap-6">
-            {presentations.length === 0 && (
+            {!presentations || presentations.length === 0 ? (
               <Card className="py-16">
                 <CardContent className="px-0">
                   <div className="flex flex-col items-center justify-center gap-3 text-center">
@@ -296,113 +298,113 @@ function PresentationsPage() {
                   </div>
                 </CardContent>
               </Card>
-            )}
+            ) : (
+              presentations.map((slot) => {
+                if (!currentUser?.judgingSession) return null;
 
-            {presentations.map((slot) => {
-              if (!currentUser?.judgingSession) return null;
+                const project = currentUser.judgingSession.projects.find(
+                  (p) => p.devpostId === slot.projectDevpostId
+                );
 
-              const project = currentUser.judgingSession.projects.find(
-                (p) => p.devpostId === slot.projectDevpostId
-              );
+                if (!project) return null;
 
-              if (!project) return null;
+                const isActive = slot.status === "presenting";
+                const isCompleted = slot.status === "completed";
 
-              const isActive = slot.status === "presenting";
-              const isCompleted = slot.status === "completed";
-
-              return (
-                <Card
-                  key={slot.projectDevpostId}
-                  className={`${isActive ? "ring-2 ring-accent shadow-lg" : isCompleted ? "opacity-50" : ""}`}
-                >
-                  <CardHeader className="pb-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="flex items-center justify-between gap-3">
-                        <CardTitle className="text-lg font-semibold leading-relaxed truncate max-w-35 lg:max-w-none">
-                          {project.name}
-                        </CardTitle>
-                        <Badge
-                          variant="outline"
-                          className={`${getStatusColor(slot.status)} w-fit`}
-                        >
-                          {slot.status.charAt(0).toUpperCase() +
-                            slot.status.slice(1)}
-                        </Badge>
-                      </div>
-
-                      {slot.timerState && (
-                        <div className="text-center self-center md:text-right">
-                          <div
-                            className={`text-2xl md:text-3xl font-mono font-bold ${
-                              slot.timerState.remainingSeconds < 60
-                                ? "text-destructive"
-                                : "text-accent"
-                            }`}
+                return (
+                  <Card
+                    key={slot.projectDevpostId}
+                    className={`${isActive ? "ring-2 ring-accent shadow-lg" : isCompleted ? "opacity-50" : ""}`}
+                  >
+                    <CardHeader className="pb-4">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="flex items-center justify-between gap-3">
+                          <CardTitle className="text-lg font-semibold leading-relaxed truncate max-w-35 lg:max-w-none">
+                            {project.name}
+                          </CardTitle>
+                          <Badge
+                            variant="outline"
+                            className={`${getStatusColor(slot.status)} w-fit`}
                           >
-                            {formatTime(slot.timerState.remainingSeconds)}
-                          </div>
+                            {slot.status.charAt(0).toUpperCase() +
+                              slot.status.slice(1)}
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                  </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground md:hidden">
-                      <Users className="h-4 w-4 shrink-0" />
-                      <span className="break-words">
-                        {project.teamMembers.join(", ")}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="hidden md:flex flex-row sm:hidden items-center gap-3 text-sm text-muted-foreground ">
+                        {slot.timerState && (
+                          <div className="text-center self-center md:text-right">
+                            <div
+                              className={`text-2xl md:text-3xl font-mono font-bold ${
+                                slot.timerState.remainingSeconds < 60
+                                  ? "text-destructive"
+                                  : "text-accent"
+                              }`}
+                            >
+                              {formatTime(slot.timerState.remainingSeconds)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground md:hidden">
                         <Users className="h-4 w-4 shrink-0" />
-                        <span className="break-words max-w-100">
+                        <span className="break-words">
                           {project.teamMembers.join(", ")}
                         </span>
                       </div>
-                      <div className="flex flex-col flex-1 sm:flex-row gap-3 sm:justify-end">
-                        {slot.status === "upcoming" && (
-                          <Button
-                            onClick={() =>
-                              startPresentation(slot.projectDevpostId)
-                            }
-                            size="lg"
-                            className="w-full sm:w-auto cursor-pointer select-none"
-                            disabled={!currentUser.judgingSession.isActive}
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            Start
-                          </Button>
-                        )}
+                      <div className="flex items-center justify-between">
+                        <div className="hidden md:flex flex-row sm:hidden items-center gap-3 text-sm text-muted-foreground ">
+                          <Users className="h-4 w-4 shrink-0" />
+                          <span className="break-words max-w-100">
+                            {project.teamMembers.join(", ")}
+                          </span>
+                        </div>
+                        <div className="flex flex-col flex-1 sm:flex-row gap-3 sm:justify-end">
+                          {slot.status === "upcoming" && (
+                            <Button
+                              onClick={() =>
+                                startPresentation(slot.projectDevpostId)
+                              }
+                              size="lg"
+                              className="w-full sm:w-auto cursor-pointer select-none"
+                              disabled={!currentUser.judgingSession.isActive}
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              Start
+                            </Button>
+                          )}
 
-                        {slot.status === "presenting" && slot.timerState && (
-                          <Button
-                            variant="destructive"
-                            onClick={() =>
-                              stopPresentation(slot.projectDevpostId)
-                            }
-                            size="lg"
-                            className="w-full sm:w-auto cursor-pointer"
-                          >
-                            <Square className="h-4 w-4 mr-2" />
-                            Complete
-                          </Button>
-                        )}
+                          {slot.status === "presenting" && slot.timerState && (
+                            <Button
+                              variant="destructive"
+                              onClick={() =>
+                                stopPresentation(slot.projectDevpostId)
+                              }
+                              size="lg"
+                              className="w-full sm:w-auto cursor-pointer"
+                            >
+                              <Square className="h-4 w-4 mr-2" />
+                              Complete
+                            </Button>
+                          )}
 
-                        {slot.status === "completed" && (
-                          <Badge
-                            variant="secondary"
-                            className="px-4 py-3 select-none w-full sm:w-auto text-center"
-                          >
-                            Completed
-                          </Badge>
-                        )}
+                          {slot.status === "completed" && (
+                            <Badge
+                              variant="secondary"
+                              className="px-4 py-3 select-none w-full sm:w-auto text-center"
+                            >
+                              Completed
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
