@@ -266,8 +266,8 @@ function PresentationsPage() {
               <Info /> Notice
             </DialogTitle>
             <DialogDescription>
-              You have not been assigned any projects to judge. If this is a
-              mistake, contact Michael from the Tech team.
+              You have not been assigned any judges. If this is a mistake,
+              contact Michael from the Tech team.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
