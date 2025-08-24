@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 export const presentationSlotValidator = v.object({
   projectName: v.string(),
+  projectDevpostId: v.string(),
   startTime: v.number(),
   duration: v.number(),
   status: v.union(
