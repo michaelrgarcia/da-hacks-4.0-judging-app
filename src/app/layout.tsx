@@ -7,6 +7,7 @@ import Nav from "./components/nav/nav";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
 import "./globals.css";
+import { Analytics } from '@vercel/analytics/next';
 
 const dmSans = DM_Sans({
   variable: "--font-dmsans",
@@ -42,6 +43,7 @@ export default function RootLayout({
               {children}
               <Toaster />
               <JudgingStatus />
+              <Analytics />
             </ThemeProvider>
           </body>
         </ConvexClientProvider>
