@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { noAuthMsg, notDirectorMsg } from "../constants/errorMessages";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { getCurrentUser } from "./user";
 import { projectValidator } from "./validators";
 
@@ -51,8 +51,7 @@ export const bulkInsertProjects = internalMutation({
   },
 });
 
-export const listAllProjects = internalQuery({
-  args: {},
+export const listAllProjects = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
 

@@ -8,6 +8,7 @@ import { Loader2, Play, Square, UserCheck, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import Leaderboard from "../components/leaderboard/leaderboard";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
 import Loading from "../components/ui/loading";
@@ -204,6 +205,8 @@ function AdminPage() {
             </div>
           </div>
         </div>
+
+        <Leaderboard />
       </div>
     </main>
   );

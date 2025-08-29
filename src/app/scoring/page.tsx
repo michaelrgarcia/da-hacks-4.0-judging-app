@@ -18,7 +18,12 @@ import {
 import { genericErrMsg } from "@/lib/constants/errorMessages";
 import { criteria } from "@/lib/constants/judging";
 import { api } from "@/lib/convex/_generated/api";
-import type { Criteria, Criterions, Project } from "@/lib/types/judging";
+import type {
+  Criteria,
+  CriteriaLabels,
+  Criterions,
+  Project,
+} from "@/lib/types/judging";
 import { scoreFormSchema, type scoreFormSchemaType } from "@/lib/zod/forms";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
@@ -49,7 +54,7 @@ import {
 import Loading from "../components/ui/loading";
 import { Slider } from "../components/ui/slider";
 
-const criteriaLabels = {
+const criteriaLabels: CriteriaLabels = {
   applicationFeasibility: "Application Feasibility (25%)",
   functionalityQuality: "Functionality & Quality (20%)",
   creativityInnovation: "Creativity & Innovation (25%)",

@@ -118,9 +118,7 @@ export const createGroups = action({
       return { success: false, message: importResult.message, groups };
     }
 
-    const allProjects = await ctx.runQuery(
-      internal.projectsConvex.listAllProjects
-    );
+    const allProjects = await ctx.runQuery(api.projectsConvex.listAllProjects);
 
     if (!allProjects)
       return {
