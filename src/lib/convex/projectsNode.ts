@@ -9,60 +9,79 @@ import { parse } from "node-html-parser";
 
 export const importFromDevpost = internalAction({
   handler: async (ctx) => {
-    const res = await fetch(projectsLink);
+    const devpostProjects: Project[] = [];
 
-    const asText = await res.text();
+    let pageNumber = 1;
+    let moreProjects = true;
 
-    const root = parse(asText);
-    const gallery = root.querySelector("#submission-gallery");
+    while (moreProjects) {
+      const res = await fetch(`${projectsLink}?page=${pageNumber}`);
 
-    if (!gallery)
-      return {
-        success: false,
-        message:
-          "Failed to obtain projects from Devpost. There may be no projects submitted.",
-      };
+      const asText = await res.text();
 
-    const projectCards = gallery.querySelectorAll(".gallery-item");
+      const root = parse(asText);
+      const gallery = root.querySelector("#submission-gallery");
 
-    const devpostProjects: Project[] = Array.from(projectCards).map((card) => {
-      const devpostLink = card.querySelector(".link-to-software");
-      const name = card.querySelector("h5");
+      if (!gallery)
+        return {
+          success: false,
+          message:
+            "Failed to obtain projects from Devpost. There may be no projects submitted.",
+        };
 
-      const teamMemberPhotos = card.querySelectorAll(".user-photo");
-      const memberOverflow = card.querySelector(".member-overflow")?.lastChild;
+      const childParagraph = gallery.querySelector("p");
 
-      const devpostUrl = devpostLink
-        ? (devpostLink.getAttribute("href") ?? "")
-        : "";
-
-      const devpostId = devpostUrl !== "" ? devpostUrl.split("/")[4] : "";
-
-      const teamMembers = Array.from(teamMemberPhotos).map((photo) =>
-        photo
-          ? (photo.getAttribute("alt") ?? "Unknown Member")
-          : "Unknown Member"
-      );
-
-      if (memberOverflow) {
-        const extraMemberCount = memberOverflow
-          .toString()
-          .split("\n")[2]
-          .split(" ")[3];
-
-        for (let i = 0; i < Number(extraMemberCount); i++) {
-          teamMembers.push("Unknown Member");
-        }
+      if (
+        childParagraph?.textContent ===
+        "There are no submissions which match your criteria."
+      ) {
+        moreProjects = false;
       }
 
-      return {
-        devpostUrl,
-        devpostId,
-        name: name ? name.textContent.trim() : "",
-        scores: [] as Score[],
-        teamMembers,
-      };
-    });
+      const projectCards = gallery.querySelectorAll(".gallery-item");
+
+      Array.from(projectCards).forEach((card) => {
+        const devpostLink = card.querySelector(".link-to-software");
+        const name = card.querySelector("h5");
+
+        const teamMemberPhotos = card.querySelectorAll(".user-photo");
+        const memberOverflow =
+          card.querySelector(".member-overflow")?.lastChild;
+
+        const devpostUrl = devpostLink
+          ? (devpostLink.getAttribute("href") ?? "")
+          : "";
+
+        const devpostId = devpostUrl !== "" ? devpostUrl.split("/")[4] : "";
+
+        const teamMembers = Array.from(teamMemberPhotos).map((photo) =>
+          photo
+            ? (photo.getAttribute("alt") ?? "Unknown Member")
+            : "Unknown Member"
+        );
+
+        if (memberOverflow) {
+          const extraMemberCount = memberOverflow
+            .toString()
+            .split("\n")[2]
+            .split(" ")[3];
+
+          for (let i = 0; i < Number(extraMemberCount); i++) {
+            teamMembers.push("Unknown Member");
+          }
+        }
+
+        devpostProjects.push({
+          devpostUrl,
+          devpostId,
+          name: name ? name.textContent.trim() : "",
+          scores: [] as Score[],
+          teamMembers,
+        });
+      });
+
+      pageNumber += 1;
+    }
 
     const removalResult: { success: boolean; message: string } =
       await ctx.runMutation(internal.projectsConvex.removeAllProjects);
