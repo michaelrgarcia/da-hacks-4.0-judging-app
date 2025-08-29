@@ -7,6 +7,27 @@ import { internalAction } from "./_generated/server";
 
 import { parse } from "node-html-parser";
 
+async function getRemainingMembers(knownMembers: string[], devpostUrl: string) {
+  const res = await fetch(devpostUrl);
+  const asText = await res.text();
+  const root = parse(asText);
+
+  const profileLinks = root.querySelectorAll(".columns .user-profile-link");
+
+  const knownMembersSet = new Set(Array.from(knownMembers));
+  const teamMembers = Array.from(profileLinks)
+    .filter((link) => link.textContent !== " ")
+    .map((link) => link.textContent);
+
+  const allMembersSet = new Set(teamMembers);
+
+  const complementArr = [...allMembersSet].filter(
+    (member) => !knownMembersSet.has(member)
+  );
+
+  return complementArr.filter((member) => member !== "");
+}
+
 export const importFromDevpost = internalAction({
   handler: async (ctx) => {
     const devpostProjects: Project[] = [];
@@ -40,7 +61,7 @@ export const importFromDevpost = internalAction({
 
       const projectCards = gallery.querySelectorAll(".gallery-item");
 
-      Array.from(projectCards).forEach((card) => {
+      for (const card of projectCards) {
         const devpostLink = card.querySelector(".link-to-software");
         const name = card.querySelector("h5");
 
@@ -61,14 +82,14 @@ export const importFromDevpost = internalAction({
         );
 
         if (memberOverflow) {
-          const extraMemberCount = memberOverflow
-            .toString()
-            .split("\n")[2]
-            .split(" ")[3];
+          const teamMembersCopy = [...teamMembers];
 
-          for (let i = 0; i < Number(extraMemberCount); i++) {
-            teamMembers.push("Unknown Member");
-          }
+          const remainingMembers = await getRemainingMembers(
+            teamMembersCopy,
+            devpostUrl
+          );
+
+          remainingMembers.forEach((member) => teamMembers.push(member));
         }
 
         devpostProjects.push({
@@ -78,7 +99,7 @@ export const importFromDevpost = internalAction({
           scores: [] as Score[],
           teamMembers,
         });
-      });
+      }
 
       pageNumber += 1;
     }
