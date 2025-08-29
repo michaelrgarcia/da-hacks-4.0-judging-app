@@ -29,11 +29,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
 import { Award, ExternalLink, Info, Send } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import JudgingIndicator from "../components/judging-indicator/judging-indicator";
+import RoleGuard from "../components/role-guard";
 import {
   Dialog,
   DialogClose,
@@ -86,8 +86,6 @@ function ScoringPage() {
   const [showNoProjectsDialog, setShowNoProjectsDialog] =
     useState<boolean>(false);
 
-  const router = useRouter();
-
   const form = useForm<scoreFormSchemaType>({
     resolver: zodResolver(scoreFormSchema),
     defaultValues: createDefaultValues(),
@@ -95,16 +93,6 @@ function ScoringPage() {
 
   const currentUser = useQuery(api.user.currentUser);
   const submitScore = useMutation(api.judging.submitScore);
-
-  useEffect(() => {
-    if (currentUser === null) {
-      router.push("/sign-in");
-    }
-
-    if (currentUser && currentUser.role !== "judge") {
-      router.push("/unauthorized");
-    }
-  }, [currentUser, router]);
 
   useEffect(() => {
     if (currentUser && !currentUser.judgingSession) {
@@ -179,196 +167,201 @@ function ScoringPage() {
     : false;
 
   return (
-    <main className="container mx-auto px-6 py-8">
-      <Dialog
-        open={showNoProjectsDialog}
-        onOpenChange={(open) => {
-          if (!open) setShowNoProjectsDialog(false);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 mb-2">
-              <Info /> Notice
-            </DialogTitle>
-            <DialogDescription>
-              You have not been assigned any projects to judge. If this is a
-              mistake, contact Michael from the Tech team.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">OK</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <div className="max-w-4xl mx-auto space-y-8">
-        <JudgingIndicator />
+    <RoleGuard role="judge">
+      <main className="container mx-auto px-6 py-8">
+        <Dialog
+          open={showNoProjectsDialog}
+          onOpenChange={(open) => {
+            if (!open) setShowNoProjectsDialog(false);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 mb-2">
+                <Info /> Notice
+              </DialogTitle>
+              <DialogDescription>
+                You have not been assigned any projects to judge. If this is a
+                mistake, contact Michael from the Tech team.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">OK</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <div className="max-w-4xl mx-auto space-y-8">
+          <JudgingIndicator />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">
-              Select project to score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={selectedProject?.devpostId}
-              onValueChange={handleProjectSelect}
-              disabled={!judgingActive}
-            >
-              <SelectTrigger className="w-full sm:w-70">
-                <SelectValue placeholder="Choose a project" />
-              </SelectTrigger>
-              <SelectContent>
-                {currentUser.judgingSession?.projects.map((project) => (
-                  <SelectItem key={project.devpostId} value={project.devpostId}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">
+                Select project to score
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={selectedProject?.devpostId}
+                onValueChange={handleProjectSelect}
+                disabled={!judgingActive}
+              >
+                <SelectTrigger className="w-full sm:w-70">
+                  <SelectValue placeholder="Choose a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {currentUser.judgingSession?.projects.map((project) => (
+                    <SelectItem
+                      key={project.devpostId}
+                      value={project.devpostId}
+                    >
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            {!selectedProject && (
-              <Card className="h-96 flex items-center justify-center">
-                <CardContent className="text-center">
-                  {!judgingActive && (
-                    <h3 className="text-lg font-semibold">
-                      Please wait for judging to start.
-                    </h3>
-                  )}
-
-                  {judgingActive && (
-                    <>
-                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Award className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-lg font-semibold mb-2">
-                        Select a project
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              {!selectedProject && (
+                <Card className="h-96 flex items-center justify-center">
+                  <CardContent className="text-center">
+                    {!judgingActive && (
+                      <h3 className="text-lg font-semibold">
+                        Please wait for judging to start.
                       </h3>
-                      <p className="text-muted-foreground">
-                        Choose a project from the dropdown above to begin
-                        scoring
-                      </p>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                    )}
 
-            <div className="space-y-8">
-              {selectedProject && judgingActive && (
-                <>
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-xl font-semibold">
-                            {selectedProject.name}
-                          </CardTitle>
+                    {judgingActive && (
+                      <>
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Award className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <div className="flex gap-2">
-                          <Link
-                            href={selectedProject.devpostUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={buttonVariants({
-                              variant: "outline",
-                              size: "sm",
-                            })}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Devpost
-                          </Link>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div>
-                        <Label className="text-sm font-medium text-foreground">
-                          Team Members
-                        </Label>
-                        <p className="text-muted-foreground mt-1">
-                          {selectedProject.teamMembers.join(", ")}
+                        <h3 className="text-lg font-semibold mb-2">
+                          Select a project
+                        </h3>
+                        <p className="text-muted-foreground">
+                          Choose a project from the dropdown above to begin
+                          scoring
                         </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-xl font-semibold">
-                        Evaluation Criteria
-                      </CardTitle>
-                      <p className="text-muted-foreground">
-                        Rate each criterion from 1 (Poor) to 5 (Excellent)
-                      </p>
-                    </CardHeader>
-                    <CardContent className="space-y-8">
-                      {Object.entries(criteriaLabels).map(([key, label]) => (
-                        <FormField
-                          key={key}
-                          control={form.control}
-                          name={key as Criterions}
-                          render={({ field }) => (
-                            <FormItem className="space-y-3">
-                              <div>
-                                <FormLabel className="text-base font-medium text-foreground">
-                                  {label}
-                                </FormLabel>
-
-                                {field.value > 0 ? (
-                                  <p className="text-sm text-accent font-medium mt-1">
-                                    {`${field.value} (${
-                                      scoreDescriptions[
-                                        field.value as keyof typeof scoreDescriptions
-                                      ]
-                                    })`}
-                                  </p>
-                                ) : (
-                                  "Not rated"
-                                )}
-                              </div>
-                              <FormControl>
-                                <Slider
-                                  value={[field.value]}
-                                  max={5}
-                                  min={1}
-                                  step={1}
-                                  className="w-full"
-                                  onValueChange={(value) =>
-                                    field.onChange(value[0])
-                                  }
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      ))}
-
-                      <Button
-                        type="submit"
-                        size="lg"
-                        className="w-full h-11 text-md font-medium cursor-pointer"
-                      >
-                        <Send className="h-5 w-5 mr-1" />
-                        Submit Score
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
               )}
-            </div>
-          </form>
-        </Form>
-      </div>
-    </main>
+
+              <div className="space-y-8">
+                {selectedProject && judgingActive && (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <CardTitle className="text-xl font-semibold">
+                              {selectedProject.name}
+                            </CardTitle>
+                          </div>
+                          <div className="flex gap-2">
+                            <Link
+                              href={selectedProject.devpostUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={buttonVariants({
+                                variant: "outline",
+                                size: "sm",
+                              })}
+                            >
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Devpost
+                            </Link>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div>
+                          <Label className="text-sm font-medium text-foreground">
+                            Team Members
+                          </Label>
+                          <p className="text-muted-foreground mt-1">
+                            {selectedProject.teamMembers.join(", ")}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-xl font-semibold">
+                          Evaluation Criteria
+                        </CardTitle>
+                        <p className="text-muted-foreground">
+                          Rate each criterion from 1 (Poor) to 5 (Excellent)
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-8">
+                        {Object.entries(criteriaLabels).map(([key, label]) => (
+                          <FormField
+                            key={key}
+                            control={form.control}
+                            name={key as Criterions}
+                            render={({ field }) => (
+                              <FormItem className="space-y-3">
+                                <div>
+                                  <FormLabel className="text-base font-medium text-foreground">
+                                    {label}
+                                  </FormLabel>
+
+                                  {field.value > 0 ? (
+                                    <p className="text-sm text-accent font-medium mt-1">
+                                      {`${field.value} (${
+                                        scoreDescriptions[
+                                          field.value as keyof typeof scoreDescriptions
+                                        ]
+                                      })`}
+                                    </p>
+                                  ) : (
+                                    "Not rated"
+                                  )}
+                                </div>
+                                <FormControl>
+                                  <Slider
+                                    value={[field.value]}
+                                    max={5}
+                                    min={1}
+                                    step={1}
+                                    className="w-full"
+                                    onValueChange={(value) =>
+                                      field.onChange(value[0])
+                                    }
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+
+                        <Button
+                          type="submit"
+                          size="lg"
+                          className="w-full h-11 text-md font-medium cursor-pointer"
+                        >
+                          <Send className="h-5 w-5 mr-1" />
+                          Submit Score
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </div>
+            </form>
+          </Form>
+        </div>
+      </main>
+    </RoleGuard>
   );
 }
 
