@@ -278,11 +278,11 @@ function PresentationsPage() {
         </DialogContent>
       </Dialog>
       <div className="px-2">
-        <div className="mb-8 -mt-3">
-          <JudgingIndicator />
-        </div>
-
         <div className="max-w-4xl mx-auto">
+          <div className="mb-8 -mt-3">
+            <JudgingIndicator />
+          </div>
+
           <div className="grid gap-6">
             {!presentations || presentations.length === 0 ? (
               <Card className="py-16">
@@ -292,8 +292,7 @@ function PresentationsPage() {
                       <CheckCircle2 className="h-8 w-8" />
                     </div>
                     <p className="text-muted-foreground max-w-md">
-                      There are no presentations scheduled for you right
-                      now.
+                      There are no presentations scheduled for you right now.
                     </p>
                   </div>
                 </CardContent>
