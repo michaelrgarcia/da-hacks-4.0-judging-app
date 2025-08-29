@@ -321,6 +321,7 @@ function ScoringPage() {
                                 <FormLabel className="text-base font-medium text-foreground">
                                   {label}
                                 </FormLabel>
+
                                 {field.value > 0 ? (
                                   <p className="text-sm text-accent font-medium mt-1">
                                     {`${field.value} (${
