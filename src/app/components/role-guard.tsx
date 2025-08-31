@@ -24,6 +24,10 @@ function RoleGuard({ role, children }: RoleGuardProps) {
     }
   }, [currentUser, router, role]);
 
+  if (currentUser === undefined) return null;
+  if (currentUser === null) return null;
+  if (currentUser.role !== role) return null;
+
   return children;
 }
 

@@ -158,12 +158,8 @@ function ScoringPage() {
     return <Loading />;
   }
 
-  if (currentUser === null) {
-    return null;
-  }
-
-  const judgingActive = currentUser.judgingSession
-    ? currentUser.judgingSession.isActive
+  const judgingActive = currentUser?.judgingSession
+    ? currentUser?.judgingSession.isActive
     : false;
 
   return (
@@ -211,7 +207,7 @@ function ScoringPage() {
                   <SelectValue placeholder="Choose a project" />
                 </SelectTrigger>
                 <SelectContent>
-                  {currentUser.judgingSession?.projects.map((project) => (
+                  {currentUser?.judgingSession?.projects.map((project) => (
                     <SelectItem
                       key={project.devpostId}
                       value={project.devpostId}

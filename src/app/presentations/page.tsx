@@ -238,8 +238,6 @@ function PresentationsPage() {
 
   if (currentUser === undefined) return <Loading />;
 
-  if (currentUser === null) return null;
-
   return (
     <RoleGuard role="mentor">
       <div className="container mx-auto px-6 py-8">

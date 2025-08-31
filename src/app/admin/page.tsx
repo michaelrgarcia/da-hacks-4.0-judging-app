@@ -76,11 +76,7 @@ function AdminPage() {
     return <Loading />;
   }
 
-  if (currentUser === null) {
-    return null;
-  }
-
-  const judgingActive = currentUser.judgingSession?.isActive ?? false;
+  const judgingActive = currentUser?.judgingSession?.isActive ?? false;
 
   return (
     <RoleGuard role="director">
