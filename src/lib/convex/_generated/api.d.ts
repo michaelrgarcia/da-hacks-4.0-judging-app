@@ -17,8 +17,7 @@ import type * as auth from "../auth.js";
 import type * as http from "../http.js";
 import type * as judging from "../judging.js";
 import type * as presentations from "../presentations.js";
-import type * as projectsConvex from "../projectsConvex.js";
-import type * as projectsNode from "../projectsNode.js";
+import type * as projects from "../projects.js";
 import type * as user from "../user.js";
 import type * as validators from "../validators.js";
 
@@ -35,8 +34,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   judging: typeof judging;
   presentations: typeof presentations;
-  projectsConvex: typeof projectsConvex;
-  projectsNode: typeof projectsNode;
+  projects: typeof projects;
   user: typeof user;
   validators: typeof validators;
 }>;

@@ -143,7 +143,7 @@ export const beginJudging = action({
       return { success: false, message: notDirectorMsg };
 
     const importResult: { success: boolean; message: string } =
-      await ctx.runAction(internal.projectsNode.importFromDevpost);
+      await ctx.runAction(internal.projects.importFromDevpost);
 
     if (!importResult.success)
       return { success: false, message: importResult.message };
