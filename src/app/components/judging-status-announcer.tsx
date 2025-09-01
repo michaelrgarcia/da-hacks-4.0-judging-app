@@ -5,31 +5,32 @@ import { useQuery } from "convex/react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
-function JudgingStatus() {
-  const currentUser = useQuery(api.user.currentUser);
+function JudgingStatusAnnouncer() {
+  const judgingActive = useQuery(api.judging.getJudgingActive);
+
   const prevIsActiveRef = useRef<boolean | undefined>(undefined);
 
   useEffect(() => {
-    const isActive = currentUser?.judgingSession?.isActive;
+    if (judgingActive === null) return;
 
     if (prevIsActiveRef.current === undefined) {
-      prevIsActiveRef.current = isActive;
+      prevIsActiveRef.current = judgingActive;
 
       return;
     }
 
-    if (isActive !== prevIsActiveRef.current) {
-      if (isActive === true) {
+    if (judgingActive !== prevIsActiveRef.current) {
+      if (judgingActive === true) {
         toast("Judging has began.");
-      } else if (isActive === false) {
+      } else if (judgingActive === false) {
         toast("Judging has ended.");
       }
 
-      prevIsActiveRef.current = isActive;
+      prevIsActiveRef.current = judgingActive;
     }
-  }, [currentUser]);
+  }, [judgingActive]);
 
   return null;
 }
 
-export default JudgingStatus;
+export default JudgingStatusAnnouncer;

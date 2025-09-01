@@ -24,11 +24,13 @@ const criteriaLabels: CriteriaLabels = {
 };
 
 function Leaderboard() {
-  const projects = useQuery(api.projectsConvex.listAllProjects);
+  const panel = useQuery(api.judging.getPanel);
 
-  if (projects === undefined) {
+  if (panel === undefined) {
     return <Loading />;
   }
+
+  const projects = panel?.projects ?? null;
 
   if (projects === null) {
     toast("Error getting projects. Please refresh.");
@@ -132,20 +134,13 @@ function Leaderboard() {
 
   return (
     <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold mb-2">🏆 Leaderboard</h2>
-        <p className="text-muted-foreground">
-          Live rankings based on judge scores
-        </p>
-      </div>
-
       {rankedProjects.map((item, index) => {
         const rank = index + 1;
         const { project, averageScore, totalJudges, breakdown } = item;
 
         return (
           <Card
-            key={project._id}
+            key={project.devpostId}
             className={`${rank <= 3 && breakdown ? "ring-2 ring-primary/20 bg-gradient-to-r from-primary/5 to-background" : ""}`}
           >
             <CardHeader>
@@ -186,7 +181,7 @@ function Leaderboard() {
                 <div className="grid grid-cols-5 gap-2 text-xs">
                   {breakdown &&
                     Object.entries(breakdown).map(([criterion, value]) => (
-                      <Fragment key={`${project._id}-${criterion}`}>
+                      <Fragment key={`${project.devpostId}-${criterion}`}>
                         <div className="text-center">
                           <div className="font-medium text-foreground">
                             {criteriaLabels[criterion as Criterions]}
@@ -227,8 +222,8 @@ function Leaderboard() {
       {rankedProjects.length === 0 && (
         <Card>
           <CardContent className="text-center py-8">
-            <Trophy className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-            <p className="text-muted-foreground">
+            <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground text-xs sm:text-base">
               No projects have been scored yet.
             </p>
           </CardContent>

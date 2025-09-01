@@ -3,7 +3,6 @@ import { v } from "convex/values";
 export const presentationSlotValidator = v.object({
   projectName: v.string(),
   projectDevpostId: v.string(),
-  startTime: v.number(),
   duration: v.number(),
   status: v.union(
     v.literal("upcoming"),
@@ -30,23 +29,6 @@ export const projectValidator = v.object({
   scores: v.array(scoreValidator),
 });
 
-export const judgingSessionValidator = v.object({
-  projects: v.array(
-    v.object({
-      devpostId: v.string(),
-      name: v.string(),
-      teamMembers: v.array(v.string()),
-      devpostUrl: v.string(),
-    })
-  ),
-  judges: v.array(v.string()),
-  presentations: v.array(presentationSlotValidator),
-  isActive: v.boolean(),
-  currentProjectPresenting: v.optional(v.string()),
-  previousProjectName: v.optional(v.string()),
-  mentorName: v.string(),
-});
-
 export const userValidator = v.object({
   name: v.optional(v.string()),
   image: v.optional(v.string()),
@@ -56,11 +38,15 @@ export const userValidator = v.object({
   phoneVerificationTime: v.optional(v.number()),
   isAnonymous: v.optional(v.boolean()),
   role: v.string(),
-  judgingSession: v.optional(judgingSessionValidator),
 });
 
 export const hierarchyValidator = v.object({
   directors: v.array(v.string()),
-  mentors: v.array(v.string()),
   judges: v.array(v.string()),
+});
+
+export const panelValidator = v.object({
+  judgingActive: v.boolean(),
+  projects: v.array(projectValidator),
+  presentations: v.array(presentationSlotValidator),
 });

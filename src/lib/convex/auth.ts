@@ -22,42 +22,19 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       const isDirector = hierarchy.directors.some(
         (email) => args.profile.email === email
       );
-      const isMentor = hierarchy.mentors.some(
-        (email) => args.profile.email === email
-      );
       const isJudge = hierarchy.judges.some(
         (email) => args.profile.email === email
       );
 
-      if (!isDirector && !isMentor && !isJudge)
+      if (!isDirector && !isJudge)
         throw new ConvexError(`Attempted login by ${args.profile.email}.`);
 
-      const newUserId = await ctx.db.insert("users", {
+      return await ctx.db.insert("users", {
         name: args.profile.name,
         email: args.profile.email,
         image: args.profile.image,
-        role: isDirector
-          ? "director"
-          : isMentor
-            ? "mentor"
-            : isJudge
-              ? "judge"
-              : undefined,
+        role: isDirector ? "director" : isJudge ? "judge" : undefined,
       });
-
-      if (isDirector) {
-        await ctx.db.patch(newUserId, {
-          judgingSession: {
-            projects: [],
-            judges: [],
-            presentations: [],
-            isActive: false,
-            mentorName: args.profile.name,
-          },
-        });
-      }
-
-      return newUserId;
     },
   },
 });

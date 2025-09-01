@@ -2,15 +2,11 @@ import { api } from "@/lib/convex/_generated/api";
 import { useQuery } from "convex/react";
 
 function JudgingIndicator() {
-  const currentUser = useQuery(api.user.currentUser);
+  const judgingActive = useQuery(api.judging.getJudgingActive);
 
-  if (!currentUser) {
+  if (!judgingActive) {
     return null;
   }
-
-  const judgingActive = currentUser.judgingSession
-    ? currentUser.judgingSession.isActive
-    : false;
 
   return (
     <div

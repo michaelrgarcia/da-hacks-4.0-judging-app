@@ -1,7 +1,6 @@
 import { v } from "convex/values";
-import { noAuthMsg, notMentorMsg } from "../constants/errorMessages";
+import { noAuthMsg, notDirectorMsg } from "../constants/errorMessages";
 import { mutation } from "./_generated/server";
-import { getGroupByMentorName } from "./judging";
 import { getCurrentUser } from "./user";
 import { presentationSlotValidator } from "./validators";
 
@@ -15,53 +14,18 @@ export const beginPresentation = mutation({
 
     if (!user) return { success: false, message: noAuthMsg };
 
-    if (user.role !== "mentor") {
-      return { success: false, message: notMentorMsg };
+    if (user.role !== "director") {
+      return { success: false, message: notDirectorMsg };
     }
 
-    if (!user.judgingSession) {
-      return { success: false, message: "You are not assigned any judges." };
-    }
+    const panel = await ctx.db.query("panel").first();
 
-    if (!user.judgingSession.isActive) {
+    if (!panel) return { success: false, message: "Panel not found." };
+
+    if (!panel.judgingActive)
       return { success: false, message: "Please wait until judging begins." };
-    }
 
-    const group = await getGroupByMentorName(
-      ctx,
-      user.name ?? "Unknown Mentor"
-    );
-
-    if (!group) {
-      return {
-        success: false,
-        message: "Your group could not be found in the system.",
-      };
-    }
-
-    await ctx.db.patch(user._id, {
-      judgingSession: {
-        ...user.judgingSession,
-        presentations: args.newPresentations,
-        currentProjectPresenting: args.projectName,
-      },
-    });
-
-    await Promise.all(
-      group.judges.map((judge) => {
-        if (!judge.judgingSession) {
-          return;
-        }
-
-        return ctx.db.patch(judge._id, {
-          judgingSession: {
-            ...judge.judgingSession,
-            presentations: args.newPresentations,
-            currentProjectPresenting: args.projectName,
-          },
-        });
-      })
-    );
+    await ctx.db.patch(panel._id, { presentations: args.newPresentations });
 
     return {
       success: true,
@@ -80,55 +44,18 @@ export const endPresentation = mutation({
 
     if (!user) return { success: false, message: noAuthMsg };
 
-    if (user.role !== "mentor") {
-      return { success: false, message: notMentorMsg };
+    if (user.role !== "director") {
+      return { success: false, message: notDirectorMsg };
     }
 
-    if (!user.judgingSession) {
-      return { success: false, message: "You are not assigned any judges." };
-    }
+    const panel = await ctx.db.query("panel").first();
 
-    if (!user.judgingSession.isActive) {
+    if (!panel) return { success: false, message: "Panel not found." };
+
+    if (!panel.judgingActive)
       return { success: false, message: "Please wait until judging begins." };
-    }
 
-    const group = await getGroupByMentorName(
-      ctx,
-      user.name ?? "Unknown Mentor"
-    );
-
-    if (!group) {
-      return {
-        success: false,
-        message: "Your group could not be found in the system.",
-      };
-    }
-
-    await ctx.db.patch(user._id, {
-      judgingSession: {
-        ...user.judgingSession,
-        presentations: args.newPresentations,
-        currentProjectPresenting: undefined,
-        previousProjectName: args.projectName,
-      },
-    });
-
-    await Promise.all(
-      group.judges.map((judge) => {
-        if (!judge.judgingSession) {
-          return;
-        }
-
-        return ctx.db.patch(judge._id, {
-          judgingSession: {
-            ...judge.judgingSession,
-            presentations: args.newPresentations,
-            currentProjectPresenting: undefined,
-            previousProjectName: args.projectName,
-          },
-        });
-      })
-    );
+    await ctx.db.patch(panel._id, { presentations: args.newPresentations });
 
     return {
       success: true,

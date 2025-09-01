@@ -5,8 +5,8 @@ import {
   notJudgeMsg,
 } from "../constants/errorMessages";
 import { defaultDurationMinutes } from "../constants/presentations";
-import type { Group, JudgingSession, Score } from "../types/judging";
-import type { UserDoc } from "../types/user";
+import type { Score } from "../types/judging";
+import { PresentationSlot } from "../types/presentations";
 import { api, internal } from "./_generated/api";
 import {
   action,
@@ -14,274 +14,11 @@ import {
   internalQuery,
   mutation,
   query,
-  type QueryCtx,
 } from "./_generated/server";
 import { getCurrentUser } from "./user";
-import { judgingSessionValidator } from "./validators";
+import { projectValidator } from "./validators";
 
-export const createGroups = action({
-  handler: async (ctx) => {
-    const currentUser = await ctx.runQuery(api.user.currentUser);
-
-    if (!currentUser)
-      return { success: false, message: noAuthMsg, groups: [] as Group[] };
-
-    if (currentUser.role !== "director")
-      return { success: false, message: notDirectorMsg, groups: [] as Group[] };
-
-    const nonDirectors = await ctx.runQuery(internal.judging.listNonDirectors);
-
-    if (!nonDirectors)
-      return {
-        success: false,
-        message: "Failed to retrieve users who are not directors.",
-        groups: [] as Group[],
-      };
-
-    if (nonDirectors.length === 0)
-      return {
-        success: false,
-        message: "There are no judges or mentors.",
-        groups: [] as Group[],
-      };
-
-    const mentors = nonDirectors.filter((u) => u.role === "mentor");
-    const judges = nonDirectors.filter((u) => u.role === "judge");
-
-    if (mentors.length === 0) {
-      return {
-        success: false,
-        message: "There are no mentors registered.",
-        groups: [] as Group[],
-      };
-    }
-
-    if (judges.length === 0) {
-      return {
-        success: false,
-        message: "There are no judges registered.",
-        groups: [] as Group[],
-      };
-    }
-
-    const groups: Group[] = mentors.map((mentor, mentorIndex) => {
-      const assignedJudges = [];
-
-      for (let i = 0; i < judges.length; i++) {
-        if (i % mentors.length === mentorIndex) assignedJudges.push(judges[i]);
-      }
-
-      return {
-        mentorName: mentor.name || "Unknown Mentor",
-        judges: assignedJudges,
-      };
-    });
-
-    for (let m = 0; m < mentors.length; m++) {
-      const mentor = mentors[m];
-      const assignedJudges = groups[m]?.judges ?? [];
-
-      const judgeNames = assignedJudges.map((j) => j.name || "Unknown Judge");
-
-      const sessionBase: JudgingSession = {
-        projects: [],
-        judges: judgeNames,
-        presentations: [],
-        isActive: false,
-        mentorName: mentor.name || "Unknown Mentor",
-      };
-
-      await ctx.runMutation(internal.judging.patchUserJudgingSession, {
-        userId: mentor._id,
-        judgingSession: sessionBase,
-      });
-
-      for (const judge of assignedJudges) {
-        await ctx.runMutation(internal.judging.patchUserJudgingSession, {
-          userId: judge._id,
-          judgingSession: sessionBase,
-        });
-      }
-    }
-
-    const removalResult: { success: boolean; message: string } =
-      await ctx.runMutation(internal.projectsConvex.removeAllProjects);
-
-    if (!removalResult.success) {
-      return { success: false, message: removalResult.message, groups };
-    }
-
-    const importResult: { success: boolean; message: string } =
-      await ctx.runAction(internal.projectsNode.importFromDevpost);
-
-    if (!importResult.success) {
-      return { success: false, message: importResult.message, groups };
-    }
-
-    const allProjects = await ctx.runQuery(api.projectsConvex.listAllProjects);
-
-    if (!allProjects)
-      return {
-        success: false,
-        message: "Failed to list all projects.",
-        groups,
-      };
-
-    if (allProjects.length === 0) {
-      return {
-        success: false,
-        message: "No projects available after import.",
-        groups,
-      };
-    }
-
-    const projectsPerGroup: JudgingSession["projects"][] = mentors.map(
-      () => []
-    );
-
-    for (let i = 0; i < allProjects.length; i++) {
-      const g = i % mentors.length;
-
-      projectsPerGroup[g].push({
-        devpostId: allProjects[i].devpostId,
-        name: allProjects[i].name,
-        teamMembers: allProjects[i].teamMembers,
-        devpostUrl: allProjects[i].devpostUrl,
-      });
-    }
-
-    for (let m = 0; m < mentors.length; m++) {
-      const mentor = mentors[m];
-      const assignedJudges = groups[m]?.judges ?? [];
-
-      const judgeNames = assignedJudges.map((j) => j.name || "Unknown Judge");
-
-      const presentations = projectsPerGroup[m].map((project, index) => ({
-        projectName: project.name,
-        projectDevpostId: project.devpostId,
-        startTime: Date.now() + index * defaultDurationMinutes * 60 * 1000,
-        duration: defaultDurationMinutes,
-        status: "upcoming" as const,
-        timerState: {
-          remainingSeconds: defaultDurationMinutes * 60,
-          isPaused: false,
-        },
-      }));
-
-      const sessionWithProjects: JudgingSession = {
-        projects: projectsPerGroup[m],
-        judges: judgeNames,
-        presentations,
-        isActive: false,
-        mentorName: mentor.name || "Unknown Mentor",
-      };
-
-      const mentorPatch = ctx.runMutation(
-        internal.judging.patchUserJudgingSession,
-        {
-          userId: mentor._id,
-          judgingSession: sessionWithProjects,
-        }
-      );
-
-      const judgePatches = assignedJudges.map((judge) =>
-        ctx.runMutation(internal.judging.patchUserJudgingSession, {
-          userId: judge._id,
-          judgingSession: sessionWithProjects,
-        })
-      );
-
-      await Promise.all([mentorPatch, judgePatches]);
-    }
-
-    return {
-      success: true,
-      message: "Groups created and projects assigned.",
-      groups,
-    };
-  },
-});
-
-async function getGroupsHelper(ctx: QueryCtx) {
-  const user = await getCurrentUser(ctx);
-
-  if (!user) return null;
-
-  if (user.role !== "director" && user.role !== "mentor") {
-    return null;
-  }
-
-  const judges = await ctx.db
-    .query("users")
-    .withIndex("by_role", (q) => q.eq("role", "judge"))
-    .collect();
-
-  const judgesWithSessions = judges.filter((judge) => {
-    if (judge.judgingSession === undefined) {
-      console.warn(`${judge.name} is not assigned a group of judges.`);
-
-      return false;
-    }
-
-    return true;
-  });
-
-  const groups = judgesWithSessions.reduce(
-    (acc, judge) => {
-      const mentorName = judge.judgingSession!.mentorName;
-
-      if (!acc[mentorName]) {
-        acc[mentorName] = {
-          mentorName,
-          judges: [],
-        };
-      }
-
-      acc[mentorName].judges.push(judge);
-
-      return acc;
-    },
-    {} as Record<
-      string,
-      {
-        mentorName: string;
-        judges: UserDoc[];
-      }
-    >
-  );
-
-  const groupsArray = Object.values(groups);
-
-  return groupsArray;
-}
-
-export async function getGroupByMentorName(ctx: QueryCtx, mentorName: string) {
-  const groups = await getGroupsHelper(ctx);
-
-  if (!groups) return null;
-
-  const group = groups.find((g) => g.mentorName === mentorName);
-
-  if (!group) return null;
-
-  return group;
-}
-
-export const getGroups = query({
-  handler: async (ctx) => {
-    return await getGroupsHelper(ctx);
-  },
-});
-
-export const patchUserJudgingSession = internalMutation({
-  args: { userId: v.id("users"), judgingSession: judgingSessionValidator },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, { judgingSession: args.judgingSession });
-  },
-});
-
-export const listNonDirectors = internalQuery({
-  args: {},
+export const listJudges = internalQuery({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
 
@@ -291,65 +28,140 @@ export const listNonDirectors = internalQuery({
 
     return await ctx.db
       .query("users")
-      .filter((q) => q.neq(q.field("role"), "director"))
+      .withIndex("by_role", (q) => q.eq("role", "judge"))
       .collect();
   },
 });
 
-export const beginJudging = mutation({
-  args: { cursor: v.union(v.string(), v.null()), numItems: v.number() },
+export const getPanel = query({
+  handler: async (ctx) => {
+    return await ctx.db.query("panel").first();
+  },
+});
+
+export const getJudgingActive = query({
+  handler: async (ctx) => {
+    const panel = await ctx.db.query("panel").first();
+
+    if (!panel) return null;
+
+    return panel.judgingActive;
+  },
+});
+
+export const panelSetJudgingActive = internalMutation({
+  args: { active: v.boolean() },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const panel = await ctx.db.query("panel").first();
 
-    if (!user) return { success: false, message: noAuthMsg };
+    if (!panel) return { success: false, message: "Panel not found." };
 
-    if (user.role !== "director") {
-      return { success: false, message: notDirectorMsg };
+    await ctx.db.patch(panel._id, { judgingActive: args.active });
+
+    const successMsg = args.active
+      ? "Judging is active."
+      : "Judging has ended.";
+
+    return { success: true, message: successMsg };
+  },
+});
+
+export const panelSetProjects = internalMutation({
+  args: { projects: v.array(projectValidator) },
+  handler: async (ctx, args) => {
+    const panel = await ctx.db.query("panel").first();
+
+    if (!panel) {
+      await ctx.db.insert("panel", {
+        judgingActive: false,
+        projects: args.projects,
+        presentations: [],
+      });
+    } else {
+      await ctx.db.patch(panel._id, { projects: args.projects });
     }
 
-    const groups = await getGroupsHelper(ctx);
+    return { success: true, message: "Panel projects updated." };
+  },
+});
 
-    if (!groups || groups.length === 0) {
+export const initializeSessionAfterImport = internalMutation({
+  handler: async (ctx) => {
+    const judges = await ctx.runQuery(internal.judging.listJudges);
+
+    if (!judges || judges.length === 0) {
       return {
         success: false,
-        message: "Please create the judge groups before starting judging.",
+        message: "There are no judges registered.",
       };
     }
 
-    const staff = await ctx.db.query("users").paginate(args);
+    const panel = await ctx.db.query("panel").first();
 
-    const { page, isDone, continueCursor } = staff;
+    if (!panel) return { success: false, message: "Panel not found." };
 
-    for (const staffMember of page) {
-      if (staffMember.judgingSession === undefined) {
-        console.warn(
-          `${staffMember.name} (${staffMember.role}) is not assigned to a group.`
-        );
+    if (panel.projects.length === 0)
+      return { success: false, message: "No projects found." };
 
-        continue;
-      }
+    const allProjectsForSession = panel.projects.map((p) => ({
+      devpostId: p.devpostId,
+      name: p.name,
+      teamMembers: p.teamMembers,
+      devpostUrl: p.devpostUrl,
+    }));
 
-      await ctx.db.patch(staffMember._id, {
-        judgingSession: { ...staffMember.judgingSession, isActive: true },
-      });
-    }
+    const sharedPresentations: PresentationSlot[] = allProjectsForSession.map(
+      (project, index) => ({
+        projectName: project.name,
+        projectDevpostId: project.devpostId,
+        startTime: Date.now() + index * defaultDurationMinutes * 60 * 1000,
+        duration: defaultDurationMinutes,
+        status: "upcoming",
+        timerState: {
+          remainingSeconds: defaultDurationMinutes * 60,
+          isPaused: false,
+        },
+      })
+    );
 
-    if (!isDone) {
-      await ctx.scheduler.runAfter(0, api.judging.beginJudging, {
-        cursor: continueCursor,
-        numItems: args.numItems,
-      });
+    await ctx.db.patch(panel._id, { presentations: sharedPresentations });
 
-      return { success: true, message: "Processing..." };
-    } else {
-      return { success: true, message: "Judging has began." };
-    }
+    return {
+      success: true,
+      message: "Shared judging schedule initialized.",
+    };
+  },
+});
+
+export const beginJudging = action({
+  handler: async (ctx): Promise<{ success: boolean; message: string }> => {
+    const currentUser = await ctx.runQuery(api.user.currentUser);
+
+    if (!currentUser) return { success: false, message: noAuthMsg };
+
+    if (currentUser.role !== "director")
+      return { success: false, message: notDirectorMsg };
+
+    const importResult: { success: boolean; message: string } =
+      await ctx.runAction(internal.projectsNode.importFromDevpost);
+
+    if (!importResult.success)
+      return { success: false, message: importResult.message };
+
+    const initResult: { success: boolean; message: string } =
+      await ctx.runMutation(internal.judging.initializeSessionAfterImport);
+
+    if (!initResult.success)
+      return { success: false, message: initResult.message };
+
+    return await ctx.runMutation(internal.judging.panelSetJudgingActive, {
+      active: true,
+    });
   },
 });
 
 export const endJudging = mutation({
-  args: { cursor: v.union(v.string(), v.null()), numItems: v.number() },
-  handler: async (ctx, args) => {
+  handler: async (ctx): Promise<{ success: boolean; message: string }> => {
     const user = await getCurrentUser(ctx);
 
     if (!user) return { success: false, message: noAuthMsg };
@@ -358,34 +170,9 @@ export const endJudging = mutation({
       return { success: false, message: notDirectorMsg };
     }
 
-    const staff = await ctx.db.query("users").paginate(args);
-
-    const { page, isDone, continueCursor } = staff;
-
-    for (const staffMember of page) {
-      if (staffMember.judgingSession === undefined) {
-        console.warn(
-          `${staffMember.name} (${staffMember.role}) is not assigned to a group.`
-        );
-
-        continue;
-      }
-
-      await ctx.db.patch(staffMember._id, {
-        judgingSession: { ...staffMember.judgingSession, isActive: false },
-      });
-    }
-
-    if (!isDone) {
-      await ctx.scheduler.runAfter(0, api.judging.endJudging, {
-        cursor: continueCursor,
-        numItems: args.numItems,
-      });
-
-      return { success: true, message: "Processing..." };
-    } else {
-      return { success: true, message: "Judging has ended." };
-    }
+    return await ctx.runMutation(internal.judging.panelSetJudgingActive, {
+      active: false,
+    });
   },
 });
 
@@ -403,44 +190,27 @@ export const submitScore = mutation({
       return { success: false, message: notJudgeMsg };
     }
 
-    if (!user.judgingSession)
-      return {
-        success: false,
-        message:
-          "You have not been assigned any projects. If this is a mistake, contact Michael from the Tech team.",
-      };
+    const panel = await ctx.db.query("panel").first();
 
-    const project = await ctx.db
-      .query("projects")
-      .withIndex("by_devpostId", (q) =>
-        q.eq("devpostId", args.projectDevpostId)
-      )
-      .first();
-
-    if (!project)
-      return {
-        success: false,
-        message:
-          "This project does not exist. If this is a mistake, contact Michael from the Tech team.",
-      };
+    if (!panel) return { success: false, message: "Panel not found." };
 
     const newScore: Score = { judgeId: user._id, criteria: args.criteria };
-    const existingScore = project.scores.find(
-      (score) => score.judgeId === user._id
-    );
 
-    if (existingScore) {
-      const existingScoreIndex = project.scores.indexOf(existingScore);
+    const updatedProjects = panel.projects.map((p) => {
+      if (p.devpostId !== args.projectDevpostId) return p;
 
-      const scoresCopy = structuredClone(project.scores);
-      scoresCopy[existingScoreIndex] = newScore;
+      const existing = p.scores.find((s) => s.judgeId === user._id);
 
-      await ctx.db.patch(project._id, { scores: scoresCopy });
-    } else {
-      await ctx.db.patch(project._id, {
-        scores: [...project.scores, newScore],
-      });
-    }
+      if (existing) {
+        const scoresCopy = p.scores.map((s) =>
+          s.judgeId === user._id ? newScore : s
+        );
+        return { ...p, scores: scoresCopy };
+      }
+      return { ...p, scores: [...p.scores, newScore] };
+    });
+
+    await ctx.db.patch(panel._id, { projects: updatedProjects });
 
     return { success: true, message: "Successfully submitted score." };
   },

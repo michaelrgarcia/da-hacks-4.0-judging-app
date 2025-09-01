@@ -104,19 +104,12 @@ export const importFromDevpost = internalAction({
       pageNumber += 1;
     }
 
-    const removalResult: { success: boolean; message: string } =
-      await ctx.runMutation(internal.projectsConvex.removeAllProjects);
-
-    if (!removalResult.success)
-      return { success: false, message: removalResult.message };
-
-    const insertionResult: { success: boolean; message: string } =
-      await ctx.runMutation(internal.projectsConvex.bulkInsertProjects, {
-        devpostProjects,
+    const setResult: { success: boolean; message: string } =
+      await ctx.runMutation(internal.judging.panelSetProjects, {
+        projects: devpostProjects,
       });
 
-    if (!insertionResult.success)
-      return { success: false, message: insertionResult.message };
+    if (!setResult.success) return setResult;
 
     return {
       success: true,
