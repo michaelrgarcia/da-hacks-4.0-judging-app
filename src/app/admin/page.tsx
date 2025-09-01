@@ -4,7 +4,7 @@ import { Button } from "@/app/components/ui/button";
 import { genericErrMsg } from "@/lib/constants/errorMessages";
 import { api } from "@/lib/convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { Loader2, Play, Square } from "lucide-react";
+import { Loader2, Play, Square, Trophy, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import Leaderboard from "../components/leaderboard/leaderboard";
@@ -67,9 +67,38 @@ function AdminPage() {
 
   const judgingActive = panel?.judgingActive ?? false;
 
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   return (
     <RoleGuard role="director">
       <main className="container mx-auto px-6 py-8">
+        <div className="fixed top-20 right-6 z-50 flex flex-col gap-2">
+          <p className="self-center">Scroll to</p>
+          <Button
+            onClick={() => scrollToSection("leaderboard")}
+            size="sm"
+            variant="outline"
+            className="bg-background/80 backdrop-blur-sm hover:bg-accent shadow-md"
+          >
+            <Trophy className="h-4 w-4 mr-2" />
+            Leaderboard
+          </Button>
+          <Button
+            onClick={() => scrollToSection("presentations")}
+            size="sm"
+            variant="outline"
+            className="bg-background/80 backdrop-blur-sm hover:bg-accent shadow-md"
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Presentations
+          </Button>
+        </div>
         <div className="max-w-4xl mx-auto space-y-10 flex flex-col">
           {!judgingActive ? (
             <Button
@@ -105,7 +134,7 @@ function AdminPage() {
             </Button>
           )}
 
-          <div className="mb-4">
+          <div id="leaderboard" className="mb-4">
             <h2 className="text-2xl font-bold">Leaderboard</h2>
             <p className="text-muted-foreground">
               Live rankings based on judge scores
@@ -113,7 +142,7 @@ function AdminPage() {
           </div>
           <Leaderboard />
 
-          <div className="mb-4">
+          <div id="presentations" className="mb-4">
             <h2 className="text-2xl font-bold ">Presentations</h2>
           </div>
           <Presentations />
