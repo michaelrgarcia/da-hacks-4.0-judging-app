@@ -27,22 +27,13 @@ import type {
 import { scoreFormSchema, type scoreFormSchemaType } from "@/lib/zod/forms";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
-import { Award, ExternalLink, Info, Send } from "lucide-react";
+import { Award, ExternalLink, Send } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import JudgingIndicator from "../components/judging-indicator/judging-indicator";
 import RoleGuard from "../components/role-guard";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -83,33 +74,26 @@ function ScoringPage() {
     Project,
     "scores"
   > | null>(null);
-  const [showNoProjectsDialog, setShowNoProjectsDialog] =
-    useState<boolean>(false);
 
   const form = useForm<scoreFormSchemaType>({
     resolver: zodResolver(scoreFormSchema),
     defaultValues: createDefaultValues(),
   });
 
-  const currentUser = useQuery(api.user.currentUser);
+  const panel = useQuery(api.judging.getPanel);
+
   const submitScore = useMutation(api.judging.submitScore);
 
   useEffect(() => {
-    if (currentUser && !currentUser.judgingSession) {
-      setShowNoProjectsDialog(true);
-    }
-
-    if (currentUser?.judgingSession?.isActive === false) {
+    if (panel?.judgingActive === false) {
       setSelectedProject(null);
     }
-  }, [currentUser]);
+  }, [panel?.judgingActive]);
 
   const handleProjectSelect = (devpostId: string) => {
-    if (!currentUser?.judgingSession) return;
+    if (!panel?.judgingActive) return;
 
-    const project = currentUser.judgingSession.projects.find(
-      (p) => p.devpostId === devpostId
-    );
+    const project = panel.projects.find((p) => p.devpostId === devpostId);
 
     if (!project)
       return toast("Could not find the selected project. Please try again.");
@@ -120,17 +104,7 @@ function ScoringPage() {
   const onSubmit = async (criteria: scoreFormSchemaType) => {
     if (!selectedProject) return;
 
-    if (!currentUser || !currentUser.judgingSession) return;
-
-    if (currentUser.judgingSession.currentProjectPresenting) {
-      return toast("Please wait for the current presentation to finish.");
-    }
-
-    if (
-      currentUser.judgingSession.previousProjectName !== selectedProject.name
-    ) {
-      return toast("Please only submit scores when teams finish presenting.");
-    }
+    if (!panel) return;
 
     try {
       const { success, message } = await submitScore({
@@ -154,40 +128,15 @@ function ScoringPage() {
     }
   };
 
-  if (currentUser === undefined) {
+  if (panel === undefined) {
     return <Loading />;
   }
 
-  const judgingActive = currentUser?.judgingSession
-    ? currentUser?.judgingSession.isActive
-    : false;
+  const judgingActive = panel?.judgingActive ?? false;
 
   return (
     <RoleGuard role="judge">
       <main className="container mx-auto px-6 py-8">
-        <Dialog
-          open={showNoProjectsDialog}
-          onOpenChange={(open) => {
-            if (!open) setShowNoProjectsDialog(false);
-          }}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 mb-2">
-                <Info /> Notice
-              </DialogTitle>
-              <DialogDescription>
-                You have not been assigned any projects to judge. If this is a
-                mistake, contact Michael from the Tech team.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">OK</Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
         <div className="max-w-4xl mx-auto space-y-8">
           <JudgingIndicator />
 
@@ -207,7 +156,7 @@ function ScoringPage() {
                   <SelectValue placeholder="Choose a project" />
                 </SelectTrigger>
                 <SelectContent>
-                  {currentUser?.judgingSession?.projects.map((project) => (
+                  {panel?.projects.map((project) => (
                     <SelectItem
                       key={project.devpostId}
                       value={project.devpostId}
