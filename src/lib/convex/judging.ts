@@ -111,10 +111,9 @@ export const initializeSessionAfterImport = internalMutation({
     }));
 
     const sharedPresentations: PresentationSlot[] = allProjectsForSession.map(
-      (project, index) => ({
+      (project) => ({
         projectName: project.name,
         projectDevpostId: project.devpostId,
-        startTime: Date.now() + index * defaultDurationMinutes * 60 * 1000,
         duration: defaultDurationMinutes,
         status: "upcoming",
         timerState: {
