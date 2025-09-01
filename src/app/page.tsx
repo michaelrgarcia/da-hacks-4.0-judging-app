@@ -14,9 +14,6 @@ async function Home() {
     case "judge":
       return redirect("/scoring");
 
-    case "mentor":
-      return redirect("/presentations");
-
     case "director":
       return redirect("/admin");
   }

@@ -20,8 +20,6 @@ async function SignIn() {
   if (user) {
     if (user.role === "judge") return redirect("/scoring");
 
-    if (user.role === "mentor") return redirect("/presentations");
-
     if (user.role === "director") return redirect("/admin");
   }
 
