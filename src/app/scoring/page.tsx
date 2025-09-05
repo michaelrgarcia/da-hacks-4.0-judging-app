@@ -15,7 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select";
-import { genericErrMsg } from "@/lib/constants/errorMessages";
+import {
+  genericErrMsg,
+  waitUntilSubmitMsg,
+} from "@/lib/constants/errorMessages";
 import { criteria } from "@/lib/constants/judging";
 import { api } from "@/lib/convex/_generated/api";
 import type {
@@ -116,7 +119,7 @@ function ScoringPage() {
       return toast("Could not find the selected project. Please try again.");
 
     if (!project.hasPresented) {
-      return toast("Please only submit scores when teams finish presenting.");
+      return toast(waitUntilSubmitMsg);
     }
 
     try {

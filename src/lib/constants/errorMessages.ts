@@ -6,3 +6,6 @@ export const notDirectorMsg = "You must be a director to perform this action.";
 export const notJudgeMsg = "You must be a judge to perform this action.";
 
 export const genericErrMsg = "An error occurred. Please try again.";
+
+export const waitUntilSubmitMsg =
+  "Please only submit scores when teams finish presenting.";

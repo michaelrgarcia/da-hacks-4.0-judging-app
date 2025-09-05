@@ -3,6 +3,7 @@ import {
   noAuthMsg,
   notDirectorMsg,
   notJudgeMsg,
+  waitUntilSubmitMsg,
 } from "../constants/errorMessages";
 import { defaultDurationMinutes } from "../constants/presentations";
 import type { Score } from "../types/judging";
@@ -192,6 +193,18 @@ export const submitScore = mutation({
     const panel = await ctx.db.query("panel").first();
 
     if (!panel) return { success: false, message: "Panel not found." };
+
+    const project = panel.projects.find(
+      (p) => p.devpostId === args.projectDevpostId
+    );
+
+    if (!project) return { success: false, message: "Project not found." };
+
+    if (!project.hasPresented)
+      return {
+        success: false,
+        message: waitUntilSubmitMsg,
+      };
 
     const newScore: Score = { judgeId: user._id, criteria: args.criteria };
 
