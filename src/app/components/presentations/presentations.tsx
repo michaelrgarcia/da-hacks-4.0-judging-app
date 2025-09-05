@@ -2,7 +2,7 @@ import { genericErrMsg } from "@/lib/constants/errorMessages";
 import { api } from "@/lib/convex/_generated/api";
 import { PresentationSlot } from "@/lib/types/presentations";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle2, Loader, Play, Square, Users } from "lucide-react";
+import { CheckCircle2, Loader, Pause, Play, Square, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "../ui/badge";
@@ -17,6 +17,8 @@ function Presentations() {
 
   const beginPresentation = useMutation(api.presentations.beginPresentation);
   const endPresentation = useMutation(api.presentations.endPresentation);
+  const haltPresentation = useMutation(api.presentations.pausePresentation);
+  const unhaltPresentation = useMutation(api.presentations.resumePresentation);
 
   const endedProjectsRef = useRef<Set<string>>(new Set());
 
@@ -28,7 +30,6 @@ function Presentations() {
         (slot) => {
           if (
             slot.status === "presenting" &&
-            slot.timerState &&
             !slot.timerState.isPaused &&
             slot.timerState.startedAt
           ) {
@@ -67,6 +68,7 @@ function Presentations() {
         void endPresentation({
           newPresentations,
           projectName: justFinished.projectName,
+          projectDevpostId: justFinished.projectDevpostId,
         });
       }
     }, 1000);
@@ -121,42 +123,114 @@ function Presentations() {
     }
   };
 
-  //   const pausePresentation = (slotId: string) => {
-  //     setSchedule((prev) =>
-  //       prev.map((slot) =>
-  //         slot.id === slotId && slot.timerState
-  //           ? {
-  //               ...slot,
-  //               timerState: {
-  //                 ...slot.timerState,
-  //                 isPaused: true,
-  //               },
-  //             }
-  //           : slot
-  //       )
-  //     );
-  //   };
+  const pausePresentation = async (projectDevpostId: string) => {
+    if (!panel) return;
 
-  //   const resumePresentation = (slotId: string) => {
-  //     setSchedule((prev) =>
-  //       prev.map((slot) =>
-  //         slot.id === slotId && slot.timerState
-  //           ? {
-  //               ...slot,
-  //               timerState: {
-  //                 ...slot.timerState,
-  //                 isPaused: false,
-  //                 startedAt: new Date(
-  //                   Date.now() -
-  //                     (slot.duration * 60 - slot.timerState.remainingSeconds) *
-  //                       1000
-  //                 ),
-  //               },
-  //             }
-  //           : slot
-  //       )
-  //     );
-  //   };
+    const sourceSlots = (presentations ??
+      panel.presentations) as PresentationSlot[];
+
+    const newPresentations: PresentationSlot[] = sourceSlots.map((slot) =>
+      slot.projectDevpostId === projectDevpostId
+        ? {
+            ...slot,
+            timerState: {
+              ...slot.timerState,
+              isPaused: true,
+              remainingSeconds: slot.timerState.startedAt
+                ? Math.max(
+                    0,
+                    slot.duration * 60 -
+                      Math.floor(
+                        (Date.now() - slot.timerState.startedAt) / 1000
+                      )
+                  )
+                : slot.timerState.remainingSeconds,
+            },
+          }
+        : slot
+    );
+
+    setPresentations(newPresentations);
+
+    try {
+      const project = newPresentations.find(
+        (p) => p.projectDevpostId === projectDevpostId
+      );
+
+      if (!project) return toast("Could not find corresponding project.");
+
+      const projectName = project.projectName;
+
+      const { success, message } = await haltPresentation({
+        newPresentations,
+        projectName,
+      });
+
+      if (!success) {
+        const errorMsg = message;
+
+        return toast(errorMsg);
+      }
+
+      return toast(message);
+    } catch (err: unknown) {
+      console.error("Error pausing presentation:", err);
+
+      return toast(genericErrMsg);
+    }
+  };
+
+  const resumePresentation = async (projectDevpostId: string) => {
+    if (!panel) return;
+
+    const sourceSlots = (presentations ??
+      panel.presentations) as PresentationSlot[];
+
+    const newPresentations: PresentationSlot[] = sourceSlots.map((slot) =>
+      slot.projectDevpostId === projectDevpostId
+        ? {
+            ...slot,
+            timerState: {
+              ...slot.timerState,
+              isPaused: false,
+              startedAt: new Date(
+                Date.now() -
+                  (slot.duration * 60 - slot.timerState.remainingSeconds) * 1000
+              ).getTime(),
+            },
+          }
+        : slot
+    );
+
+    setPresentations(newPresentations);
+
+    try {
+      const project = newPresentations.find(
+        (p) => p.projectDevpostId === projectDevpostId
+      );
+
+      if (!project) return toast("Could not find corresponding project.");
+
+      const projectName = project.projectName;
+
+      const { success, message } = await unhaltPresentation({
+        newPresentations,
+        projectName,
+      });
+
+      if (!success) {
+        const errorMsg = message;
+
+        return toast(errorMsg);
+      }
+
+      return toast(message);
+    } catch (err: unknown) {
+      console.error("Error pausing presentation:", err);
+
+      return toast(genericErrMsg);
+    }
+  };
 
   const stopPresentation = async (projectDevpostId: string) => {
     if (!panel) return;
@@ -170,7 +244,6 @@ function Presentations() {
               timerState: {
                 remainingSeconds: 0,
                 isPaused: true,
-                startedAt: undefined,
               },
             }
           : slot
@@ -190,6 +263,7 @@ function Presentations() {
       const { success, message } = await endPresentation({
         newPresentations,
         projectName,
+        projectDevpostId,
       });
 
       if (!success) {
@@ -324,15 +398,43 @@ function Presentations() {
                     )}
 
                     {slot.status === "presenting" && slot.timerState && (
-                      <Button
-                        variant="destructive"
-                        onClick={() => stopPresentation(slot.projectDevpostId)}
-                        size="lg"
-                        className="w-full sm:w-auto cursor-pointer"
-                      >
-                        <Square className="h-4 w-4 mr-2" />
-                        Complete
-                      </Button>
+                      <>
+                        {slot.timerState.isPaused ? (
+                          <Button
+                            onClick={() =>
+                              resumePresentation(slot.projectDevpostId)
+                            }
+                            size="lg"
+                            className="w-full sm:w-auto cursor-pointer"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Resume
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              pausePresentation(slot.projectDevpostId)
+                            }
+                            size="lg"
+                            className="w-full sm:w-auto cursor-pointer"
+                          >
+                            <Pause className="h-4 w-4 mr-2" />
+                            Pause
+                          </Button>
+                        )}
+                        <Button
+                          variant="destructive"
+                          onClick={() =>
+                            stopPresentation(slot.projectDevpostId)
+                          }
+                          size="lg"
+                          className="w-full sm:w-auto cursor-pointer"
+                        >
+                          <Square className="h-4 w-4 mr-2" />
+                          Complete
+                        </Button>
+                      </>
                     )}
 
                     {slot.status === "completed" && (

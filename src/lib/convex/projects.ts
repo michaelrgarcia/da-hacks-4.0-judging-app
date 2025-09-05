@@ -98,6 +98,7 @@ export const importFromDevpost = internalAction({
           name: name ? name.textContent.trim() : "",
           scores: [] as Score[],
           teamMembers,
+          hasPresented: false,
         });
       }
 

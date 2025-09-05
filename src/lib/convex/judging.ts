@@ -204,8 +204,10 @@ export const submitScore = mutation({
         const scoresCopy = p.scores.map((s) =>
           s.judgeId === user._id ? newScore : s
         );
+
         return { ...p, scores: scoresCopy };
       }
+
       return { ...p, scores: [...p.scores, newScore] };
     });
 

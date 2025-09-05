@@ -72,7 +72,7 @@ const createDefaultValues = (): Criteria => {
 function ScoringPage() {
   const [selectedProject, setSelectedProject] = useState<Omit<
     Project,
-    "scores"
+    "scores" | "hasPresented"
   > | null>(null);
 
   const form = useForm<scoreFormSchemaType>({
@@ -105,6 +105,17 @@ function ScoringPage() {
     if (!selectedProject) return;
 
     if (!panel) return;
+
+    const project = panel.projects.find(
+      (p) => p.devpostId === selectedProject.devpostId
+    );
+
+    if (!project)
+      return toast("Could not find the selected project. Please try again.");
+
+    if (!project.hasPresented) {
+      return toast("Please only submit scores when teams finish presenting.");
+    }
 
     try {
       const { success, message } = await submitScore({

@@ -27,6 +27,7 @@ export const projectValidator = v.object({
   teamMembers: v.array(v.string()),
   devpostUrl: v.string(),
   scores: v.array(scoreValidator),
+  hasPresented: v.boolean(),
 });
 
 export const userValidator = v.object({
