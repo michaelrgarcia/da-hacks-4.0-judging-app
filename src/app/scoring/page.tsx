@@ -98,6 +98,8 @@ function ScoringPage() {
     if (!project)
       return toast("Could not find the selected project. Please try again.");
 
+    form.reset();
+
     return setSelectedProject(project);
   };
 
