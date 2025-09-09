@@ -2,7 +2,15 @@ import { genericErrMsg } from "@/lib/constants/errorMessages";
 import { api } from "@/lib/convex/_generated/api";
 import { PresentationSlot } from "@/lib/types/presentations";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle2, Loader, Pause, Play, Square, Users } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader,
+  Loader2,
+  Pause,
+  Play,
+  Square,
+  Users,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "../ui/badge";
@@ -12,6 +20,13 @@ import Loading from "../ui/loading";
 
 function Presentations() {
   const [presentations, setPresentations] = useState<PresentationSlot[]>();
+
+  const [startLoading, setStartLoading] = useState<Record<string, boolean>>({});
+  const [pauseLoading, setPauseLoading] = useState<Record<string, boolean>>({});
+  const [resumeLoading, setResumeLoading] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [stopLoading, setStopLoading] = useState<Record<string, boolean>>({});
 
   const panel = useQuery(api.judging.getPanel);
 
@@ -79,6 +94,8 @@ function Presentations() {
   const startPresentation = async (projectDevpostId: string) => {
     if (!panel) return;
 
+    setStartLoading((prev) => ({ ...prev, [projectDevpostId]: true }));
+
     const newPresentations: PresentationSlot[] = panel.presentations.map(
       (slot) =>
         slot.projectDevpostId === projectDevpostId
@@ -92,8 +109,6 @@ function Presentations() {
             }
           : slot
     );
-
-    setPresentations(newPresentations);
 
     try {
       const project = newPresentations.find(
@@ -115,16 +130,22 @@ function Presentations() {
         return toast(errorMsg);
       }
 
+      setPresentations(newPresentations);
+
       return toast(message);
     } catch (err: unknown) {
       console.error("Error beginning presentation:", err);
 
       return toast(genericErrMsg);
+    } finally {
+      setStartLoading((prev) => ({ ...prev, [projectDevpostId]: false }));
     }
   };
 
   const pausePresentation = async (projectDevpostId: string) => {
     if (!panel) return;
+
+    setPauseLoading((prev) => ({ ...prev, [projectDevpostId]: true }));
 
     const sourceSlots = (presentations ??
       panel.presentations) as PresentationSlot[];
@@ -150,8 +171,6 @@ function Presentations() {
         : slot
     );
 
-    setPresentations(newPresentations);
-
     try {
       const project = newPresentations.find(
         (p) => p.projectDevpostId === projectDevpostId
@@ -172,16 +191,22 @@ function Presentations() {
         return toast(errorMsg);
       }
 
+      setPresentations(newPresentations);
+
       return toast(message);
     } catch (err: unknown) {
       console.error("Error pausing presentation:", err);
 
       return toast(genericErrMsg);
+    } finally {
+      setPauseLoading((prev) => ({ ...prev, [projectDevpostId]: false }));
     }
   };
 
   const resumePresentation = async (projectDevpostId: string) => {
     if (!panel) return;
+
+    setResumeLoading((prev) => ({ ...prev, [projectDevpostId]: true }));
 
     const sourceSlots = (presentations ??
       panel.presentations) as PresentationSlot[];
@@ -201,8 +226,6 @@ function Presentations() {
           }
         : slot
     );
-
-    setPresentations(newPresentations);
 
     try {
       const project = newPresentations.find(
@@ -224,16 +247,22 @@ function Presentations() {
         return toast(errorMsg);
       }
 
+      setPresentations(newPresentations);
+
       return toast(message);
     } catch (err: unknown) {
       console.error("Error pausing presentation:", err);
 
       return toast(genericErrMsg);
+    } finally {
+      setResumeLoading((prev) => ({ ...prev, [projectDevpostId]: false }));
     }
   };
 
   const stopPresentation = async (projectDevpostId: string) => {
     if (!panel) return;
+
+    setStopLoading((prev) => ({ ...prev, [projectDevpostId]: true }));
 
     const newPresentations: PresentationSlot[] = panel.presentations.map(
       (slot) =>
@@ -248,8 +277,6 @@ function Presentations() {
             }
           : slot
     );
-
-    setPresentations(newPresentations);
 
     try {
       const project = newPresentations.find(
@@ -272,11 +299,15 @@ function Presentations() {
         throw new Error(errorMsg);
       }
 
+      setPresentations(newPresentations);
+
       return toast(message);
     } catch (err: unknown) {
       console.error("Error stopping presentation:", err);
 
       return toast(genericErrMsg);
+    } finally {
+      setStopLoading((prev) => ({ ...prev, [projectDevpostId]: false }));
     }
   };
 
@@ -389,11 +420,20 @@ function Presentations() {
                       <Button
                         onClick={() => startPresentation(slot.projectDevpostId)}
                         size="lg"
-                        className="w-full sm:w-auto cursor-pointer select-none"
-                        disabled={!panel.judgingActive}
+                        className="w-full sm:w-auto cursor-pointer select-none min-w-40"
+                        disabled={
+                          !panel.judgingActive ||
+                          !!startLoading[slot.projectDevpostId]
+                        }
                       >
-                        <Play className="h-4 w-4 mr-2" />
-                        Start
+                        {!startLoading[slot.projectDevpostId] ? (
+                          <>
+                            <Play className="h-4 w-4 mr-2" />
+                            Start
+                          </>
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        )}
                       </Button>
                     )}
 
@@ -405,10 +445,17 @@ function Presentations() {
                               resumePresentation(slot.projectDevpostId)
                             }
                             size="lg"
-                            className="w-full sm:w-auto cursor-pointer"
+                            className="w-full sm:w-auto cursor-pointer min-w-40"
+                            disabled={!!resumeLoading[slot.projectDevpostId]}
                           >
-                            <Play className="h-4 w-4 mr-2" />
-                            Resume
+                            {!resumeLoading[slot.projectDevpostId] ? (
+                              <>
+                                <Play className="h-4 w-4 mr-2" />
+                                Resume
+                              </>
+                            ) : (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            )}
                           </Button>
                         ) : (
                           <Button
@@ -417,10 +464,17 @@ function Presentations() {
                               pausePresentation(slot.projectDevpostId)
                             }
                             size="lg"
-                            className="w-full sm:w-auto cursor-pointer"
+                            className="w-full sm:w-auto cursor-pointer min-w-40"
+                            disabled={!!pauseLoading[slot.projectDevpostId]}
                           >
-                            <Pause className="h-4 w-4 mr-2" />
-                            Pause
+                            {!pauseLoading[slot.projectDevpostId] ? (
+                              <>
+                                <Pause className="h-4 w-4 mr-2" />
+                                Pause
+                              </>
+                            ) : (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            )}
                           </Button>
                         )}
                         <Button
@@ -429,10 +483,17 @@ function Presentations() {
                             stopPresentation(slot.projectDevpostId)
                           }
                           size="lg"
-                          className="w-full sm:w-auto cursor-pointer"
+                          className="w-full sm:w-auto cursor-pointer min-w-40"
+                          disabled={!!stopLoading[slot.projectDevpostId]}
                         >
-                          <Square className="h-4 w-4 mr-2" />
-                          Complete
+                          {!stopLoading[slot.projectDevpostId] ? (
+                            <>
+                              <Square className="h-4 w-4 mr-2" />
+                              Complete
+                            </>
+                          ) : (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          )}
                         </Button>
                       </>
                     )}
